@@ -16,7 +16,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 function Navigation() {
   const location = useLocation();
   const { currentUser, projects, activeProject, setActiveProject, loadingProjects, createProject, logout } = useAuth();
-  
+
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -35,7 +35,7 @@ function Navigation() {
     }
     setCreating(false);
   };
-  
+
   const [showSettings, setShowSettings] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const { shareProject, deleteProject, leaveProject, isOwner } = useAuth();
@@ -46,8 +46,8 @@ function Navigation() {
     if (!inviteEmail.trim()) return;
     const ok = await shareProject(inviteEmail.trim());
     if (ok) {
-       alert('Invitación enviada exitosamente.');
-       setInviteEmail('');
+      alert('Invitación enviada exitosamente.');
+      setInviteEmail('');
     }
   };
 
@@ -64,13 +64,13 @@ function Navigation() {
       if (ok) setShowSettings(false);
     }
   };
-  
+
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LineChart },
     { path: '/incomes', label: 'Ingresos', icon: Wallet },
-    { path: '/fixed-incomes', label: 'Grilla Ingresos', icon: LayoutGrid },
+    { path: '/fixed-incomes', label: 'Ingresos Fijos', icon: LayoutGrid },
     { path: '/expenses', label: 'Gastos', icon: Receipt },
-    { path: '/fixed-expenses', label: 'Grilla Gastos', icon: LayoutGrid },
+    { path: '/fixed-expenses', label: 'Gastos Fijos', icon: LayoutGrid },
     { path: '/categories', label: 'Categorías', icon: Tags },
   ];
 
@@ -90,7 +90,7 @@ function Navigation() {
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyecto Activo</label>
             <div className="flex gap-2">
               {activeProjectObj && (
-                <button 
+                <button
                   onClick={() => setShowSettings(!showSettings)}
                   className={`hover:text-white transition-colors ${showSettings ? 'text-blue-400' : 'text-slate-400'}`}
                   title="Configurar Proyecto"
@@ -98,7 +98,7 @@ function Navigation() {
                   <Settings className="w-4 h-4" />
                 </button>
               )}
-              <button 
+              <button
                 onClick={() => setIsCreatingProject(!isCreatingProject)}
                 className="text-slate-400 hover:text-white transition-colors"
                 title="Nuevo Proyecto"
@@ -110,16 +110,16 @@ function Navigation() {
 
           {isCreatingProject ? (
             <form onSubmit={handleCreateProject} className="flex gap-2">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 autoFocus
                 placeholder="Nombre del proyecto..."
                 value={newProjectName}
                 onChange={e => setNewProjectName(e.target.value)}
                 className="w-full bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700"
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={creating || !newProjectName.trim()}
                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 py-2 disabled:opacity-50 flex items-center justify-center"
               >
@@ -128,10 +128,10 @@ function Navigation() {
             </form>
           ) : (
             loadingProjects ? (
-              <div className="flex items-center text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin"/> Cargando...</div>
+              <div className="flex items-center text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
             ) : (
               <div className="relative">
-                <select 
+                <select
                   value={activeProject || ''}
                   onChange={(e) => setActiveProject(e.target.value)}
                   className="w-full bg-slate-800 text-slate-200 text-sm rounded-lg pl-8 pr-4 py-2 appearance-none outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700"
@@ -144,7 +144,7 @@ function Navigation() {
               </div>
             )
           )}
-          
+
           {/* Settings Panel */}
           {showSettings && activeProjectObj && (
             <div className="mt-4 p-4 bg-slate-800 rounded-xl border border-slate-700">
@@ -152,30 +152,30 @@ function Navigation() {
                 <Settings className="w-4 h-4 text-blue-400" />
                 Opciones
               </h3>
-              
+
               {isOwner(activeProjectObj.created_by) ? (
                 <>
                   <form onSubmit={handleShare} className="mb-4">
                     <label className="text-xs text-slate-400 block mb-1">Invitar Usuario (Email o Username)</label>
                     <div className="flex gap-2">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={inviteEmail}
                         onChange={e => setInviteEmail(e.target.value)}
                         placeholder="usuario o correo"
                         className="w-full bg-slate-900 text-slate-200 text-xs rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500 border border-slate-700"
                       />
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={!inviteEmail.trim()}
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-2 disabled:opacity-50"
                         title="Compartir"
                       >
-                         <Share2 className="w-4 h-4" />
+                        <Share2 className="w-4 h-4" />
                       </button>
                     </div>
                   </form>
-                  <button 
+                  <button
                     onClick={handleProjectDelete}
                     className="w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-lg transition-colors border border-red-500/20"
                   >
@@ -185,7 +185,7 @@ function Navigation() {
               ) : (
                 <div className="space-y-3">
                   <p className="text-xs text-amber-400/80 leading-tight">Eres invitado en este proyecto (Creado por {activeProjectObj.created_by}).</p>
-                  <button 
+                  <button
                     onClick={handleProjectLeave}
                     className="w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-amber-500 hover:bg-amber-500/10 rounded-lg transition-colors border border-amber-500/20"
                   >
@@ -205,11 +205,10 @@ function Navigation() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive 
-                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/20' 
+                className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${isActive
+                    ? 'bg-blue-600 text-white font-medium shadow-md shadow-blue-900/20'
                     : 'hover:bg-slate-800 hover:text-white'
-                }`}
+                  }`}
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -220,20 +219,20 @@ function Navigation() {
       </div>
 
       {/* User Footer */}
-      <div 
-         className="p-4 border-t border-slate-800 flex items-center justify-between gap-3 group relative cursor-pointer hover:bg-slate-800/50 transition-colors"
-         onClick={() => setShowLogoutConfirm(true)}
+      <div
+        className="p-4 border-t border-slate-800 flex items-center justify-between gap-3 group relative cursor-pointer hover:bg-slate-800/50 transition-colors"
+        onClick={() => setShowLogoutConfirm(true)}
       >
-         <div className="flex gap-3 overflow-hidden items-center">
-            <div className="bg-slate-800 p-2 rounded-full shrink-0 group-hover:bg-slate-700 transition-colors">
-               <User className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
-            </div>
-            <div className="overflow-hidden">
-               <p className="text-sm font-medium text-white truncate">{currentUser?.username}</p>
-               <p className="text-xs text-slate-500 truncate" title={currentUser?.email}>{currentUser?.email}</p>
-            </div>
-         </div>
-         <LogOut className="w-4 h-4 text-slate-600 group-hover:text-red-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="flex gap-3 overflow-hidden items-center">
+          <div className="bg-slate-800 p-2 rounded-full shrink-0 group-hover:bg-slate-700 transition-colors">
+            <User className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-sm font-medium text-white truncate">{currentUser?.username}</p>
+            <p className="text-xs text-slate-500 truncate" title={currentUser?.email}>{currentUser?.email}</p>
+          </div>
+        </div>
+        <LogOut className="w-4 h-4 text-slate-600 group-hover:text-red-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Logout Confirmation Modal */}
@@ -249,7 +248,7 @@ function Navigation() {
                 <p className="text-sm text-slate-400 mt-1">¿Estás seguro que deseas salir de la aplicación?</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
@@ -259,8 +258,8 @@ function Navigation() {
               </button>
               <button
                 onClick={() => {
-                   setShowLogoutConfirm(false);
-                   logout();
+                  setShowLogoutConfirm(false);
+                  logout();
                 }}
                 className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium shadow-lg shadow-red-900/20 transition-all flex justify-center items-center gap-2"
               >
@@ -279,56 +278,56 @@ function MainApp() {
   const { isInitializing, currentUser, pendingRegistration, loginWithGoogle, completeRegistration, logout } = useAuth();
 
   if (isInitializing) {
-     return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+    return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
   }
 
   if (pendingRegistration) {
-     return (
-       <CompleteProfile 
-         userEmail={pendingRegistration.email} 
-         userName={pendingRegistration.name}
-         userPicture={pendingRegistration.picture}
-         onSubmit={completeRegistration} 
-       />
-     );
+    return (
+      <CompleteProfile
+        userEmail={pendingRegistration.email}
+        userName={pendingRegistration.name}
+        userPicture={pendingRegistration.picture}
+        onSubmit={completeRegistration}
+      />
+    );
   }
 
   if (!currentUser) {
-     return (
-        <Landing 
-           onGoogleSuccess={(res) => loginWithGoogle(res.credential)}
-           onGoogleError={() => alert('Fallo inicio de sesión con Google')}
-        />
-     );
+    return (
+      <Landing
+        onGoogleSuccess={(res) => loginWithGoogle(res.credential)}
+        onGoogleError={() => alert('Fallo inicio de sesión con Google')}
+      />
+    );
   }
 
   return (
-      <Router>
-        <div className="flex bg-slate-50 min-h-screen">
-          <Navigation />
-          <main className="flex-1 p-8 overflow-y-auto h-screen">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/incomes" element={<IncomesForm />} />
-              <Route path="/fixed-incomes" element={<FixedIncomesGrid />} />
-              <Route path="/expenses" element={<ExpensesForm />} />
-              <Route path="/fixed-expenses" element={<FixedExpensesGrid />} />
-              <Route path="/categories" element={<CategoriesManager />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+    <Router>
+      <div className="flex bg-slate-50 min-h-screen">
+        <Navigation />
+        <main className="flex-1 p-8 overflow-y-auto h-screen">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/incomes" element={<IncomesForm />} />
+            <Route path="/fixed-incomes" element={<FixedIncomesGrid />} />
+            <Route path="/expenses" element={<ExpensesForm />} />
+            <Route path="/fixed-expenses" element={<FixedExpensesGrid />} />
+            <Route path="/categories" element={<CategoriesManager />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
 function App() {
   // Client ID por default simulado si no existe en ENV
   const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || 'dummy_client_id';
-  
+
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <AuthProvider>
-         <MainApp />
+        <MainApp />
       </AuthProvider>
     </GoogleOAuthProvider>
   );

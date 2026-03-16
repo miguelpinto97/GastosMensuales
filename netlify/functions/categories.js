@@ -4,7 +4,7 @@ const { verifyToken } = require('./utils/auth');
 exports.handler = async (event) => {
   try {
     const sql = getDb();
-    const headers = { 
+    const headers = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE'
@@ -16,9 +16,9 @@ exports.handler = async (event) => {
 
     const user = verifyToken(event);
     if (!user) {
-       return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized. Invalid or expired token.' }) };
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized. Invalid or expired token.' }) };
     }
-    
+
     const userId = user.username;
     const projectId = event.headers['x-project-id'] || event.headers['X-Project-Id'];
 
@@ -27,7 +27,28 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'GET') {
-      const result = await sql`SELECT * FROM categories WHERE project_id = ${projectId} ORDER BY name ASC`;
+
+      const singleTime = event.queryStringParameters?.single_time;
+
+      if (singleTime === 'true') {
+        const result = await sql`
+          SELECT *
+          FROM categories
+          WHERE project_id = ${projectId}
+          AND is_single_time = true
+          ORDER BY name ASC
+        `;
+
+        return { statusCode: 200, headers, body: JSON.stringify(result) };
+      }
+
+      const result = await sql`
+        SELECT *
+        FROM categories
+        WHERE project_id = ${projectId}
+        ORDER BY name ASC
+      `;
+
       return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
@@ -38,7 +59,7 @@ exports.handler = async (event) => {
       const type = data.type || 'GASTO';
       const is_single_time = data.is_single_time !== undefined ? data.is_single_time : false;
       const budget = data.budget || 0;
-      
+
       if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
 
       const result = await sql`
@@ -52,7 +73,7 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'PUT') {
       const data = JSON.parse(event.body);
       const { id, name, color, type, is_single_time, budget } = data;
-      
+
       if (!id || !name) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
       }
@@ -90,10 +111,10 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers, body: 'Method Not Allowed' };
   } catch (error) {
     console.error('Error in categories function:', error);
-    return { 
-      statusCode: 500, 
+    return {
+      statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*' },
-      body: JSON.stringify({ error: error.message }) 
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
