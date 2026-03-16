@@ -16,7 +16,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 function Navigation() {
   const location = useLocation();
   const { currentUser, projects, activeProject, setActiveProject, loadingProjects, createProject, logout } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
+
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
