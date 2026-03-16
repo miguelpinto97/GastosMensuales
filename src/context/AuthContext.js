@@ -6,7 +6,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token') || null);
-  
+
   // Estado para usuario que entró con google pero es su primera vez
   const [pendingRegistration, setPendingRegistration] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -21,12 +21,12 @@ export function AuthProvider({ children }) {
       try {
         const decoded = jwtDecode(token);
         if (decoded.exp * 1000 < Date.now()) {
-            logout();
+          logout();
         } else {
-            setCurrentUser({ username: decoded.username, email: decoded.email });
+          setCurrentUser({ username: decoded.username, email: decoded.email });
         }
       } catch (err) {
-         logout();
+        logout();
       }
     }
     setIsInitializing(false);
@@ -42,13 +42,13 @@ export function AuthProvider({ children }) {
     setLoadingProjects(true);
     try {
       const res = await fetch(`/.netlify/functions/projects?username=${currentUser.username}`, {
-         headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       const data = await res.json();
-      
+
       const userProjects = Array.isArray(data) ? data : [];
       setProjects(userProjects);
-      
+
       if (userProjects.length > 0 && !activeProject) {
         setActiveProject(userProjects[0].id);
       }
@@ -63,24 +63,24 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch('/.netlify/functions/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'SIGN_IN', token: credential })
       });
       const data = await res.json();
 
       if (data.requiresRegistration) {
-          setPendingRegistration({
-             email: data.email,
-             name: data.name,
-             picture: data.picture,
-             token: credential
-          });
-          return { needsProfile: true };
+        setPendingRegistration({
+          email: data.email,
+          name: data.name,
+          picture: data.picture,
+          token: credential
+        });
+        return { needsProfile: true };
       } else if (data.success && data.token) {
-          localStorage.setItem('token', data.token);
-          setToken(data.token);
-          setCurrentUser(data.user);
-          return { success: true };
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setCurrentUser(data.user);
+        return { success: true };
       }
       return { success: false, error: 'Respuesta desconocida del servidor' };
 
@@ -91,44 +91,44 @@ export function AuthProvider({ children }) {
   };
 
   const completeRegistration = async (username) => {
-      try {
-          const res = await fetch('/.netlify/functions/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                action: 'COMPLETE_REGISTRATION', 
-                token: pendingRegistration.token,
-                username: username 
-            })
-          });
-          const data = await res.json();
-          if (data.success && data.token) {
-             localStorage.setItem('token', data.token);
-             setToken(data.token);
-             setCurrentUser(data.user);
-             setPendingRegistration(null);
-             return true;
-          }
-          return false;
-      } catch (err) {
-          console.error(err);
-          return false;
+    try {
+      const res = await fetch('/.netlify/functions/auth', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          action: 'COMPLETE_REGISTRATION',
+          token: pendingRegistration.token,
+          username: username
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.token) {
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setCurrentUser(data.user);
+        setPendingRegistration(null);
+        return true;
       }
+      return false;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
   };
 
   const logout = () => {
-     localStorage.removeItem('token');
-     setToken(null);
-     setCurrentUser(null);
-     setActiveProject(null);
-     setProjects([]);
+    localStorage.removeItem('token');
+    setToken(null);
+    setCurrentUser(null);
+    setActiveProject(null);
+    setProjects([]);
   };
 
   const createProject = async (name) => {
     try {
       const res = await fetch('/.netlify/functions/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'CREATE', name, username: currentUser.username })
       });
       if (res.ok) {
@@ -148,12 +148,12 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch('/.netlify/functions/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'SHARE', 
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          action: 'SHARE',
           project_id: activeProject,
           email: emailOrUsername,
-          username: emailOrUsername 
+          username: emailOrUsername
         })
       });
       if (res.ok) return true;
@@ -215,10 +215,10 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       isInitializing,
-      currentUser, 
+      currentUser,
       token,
       pendingRegistration,
-      activeProject, 
+      activeProject,
       setActiveProject,
       projects,
       loadingProjects,
