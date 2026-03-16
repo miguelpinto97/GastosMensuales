@@ -77,7 +77,7 @@ function Navigation() {
   return (
     <nav className={`${collapsed ? "w-20" : "w-64"} bg-slate-900 min-h-screen p-4 text-slate-300 flex flex-col justify-between transition-all duration-300 overflow-hidden`}>
       <div>
-        <div className="mb-6 p-4 flex justify-between items-center">
+        <div className="mb-6 p-2 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
             <Receipt className="w-6 h-6 text-blue-500" />
             {!collapsed && "Mi Dinero"}
@@ -85,6 +85,7 @@ function Navigation() {
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="text-slate-400 hover:text-white"
+            style={{ fontSize: "20px" }}
           >
             {collapsed ? "→" : "←"}
           </button>
