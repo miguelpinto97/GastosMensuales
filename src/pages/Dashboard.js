@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, TrendingDown, TrendingUp, DollarSign, CalendarCheck, PiggyBank, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { ChevronDown } from 'lucide-react';
 
 export default function Dashboard() {
   const { activeProject, getAuthHeaders } = useAuth();
@@ -49,126 +50,134 @@ export default function Dashboard() {
   const catGastosFijos = summary.byCategory?.filter(c => c.type === 'GASTO' && c.is_single_time) || [];
   const catGastosAcumulativos = summary.byCategory?.filter(c => c.type === 'GASTO' && !c.is_single_time) || [];
 
-  const CategorySection = ({ title, data, totalType, monthProgressPercentage }) => {
+  const CategorySection = ({ title, data, monthProgressPercentage }) => {
+    const [open, setOpen] = useState(true);
+
     if (data.length === 0) return null;
 
     return (
       <div className="mb-8 last:mb-0">
-        <h3 className="text-lg font-semibold text-slate-700 mb-4">{title}</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {data.map((cat, idx) => {
-            const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
-            const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
 
-            // Lógica de Proyectado
-            let projectedExpected = 0;
-            let statusText = '';
-            let statusColor = 'text-slate-500';
+        {/* HEADER (clickable) */}
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex justify-between items-center mb-4"
+        >
+          <h3 className="text-lg font-semibold text-slate-700 text-left">
+            {title}
+          </h3>
 
-            if (cat.budget > 0) {
-              if (cat.is_single_time) {
-                // Gastos fijos (1 vez), deberían ejecutarse 100% o 0% sin importar día
-                projectedExpected = cat.budget;
-                statusText = cat.total >= cat.budget ? 'Pagado' : 'Pendiente';
-                statusColor = cat.total >= cat.budget ? 'text-emerald-500' : 'text-amber-500';
-              } else {
-                // Gastos variables acumulativos
-                projectedExpected = cat.budget * (monthProgressPercentage / 100);
-                const difference = cat.total - projectedExpected;
+          <ChevronDown
+            className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""
+              }`}
+          />
+        </button>
 
-                if (difference > (cat.budget * 0.1)) {
-                  statusText = 'Gastando rápido';
-                  statusColor = 'text-red-500';
-                } else if (difference < -(cat.budget * 0.1)) {
-                  statusText = 'Ahorrando';
-                  statusColor = 'text-emerald-500';
+        {/* CONTENT */}
+        {open && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {data.map((cat, idx) => {
+              const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
+              const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
+
+              let projectedExpected = 0;
+              let statusText = '';
+              let statusColor = 'text-slate-500';
+
+              if (cat.budget > 0) {
+                if (cat.is_single_time) {
+                  projectedExpected = cat.budget;
+                  statusText = cat.total >= cat.budget ? 'Pagado' : 'Pendiente';
+                  statusColor = cat.total >= cat.budget ? 'text-emerald-500' : 'text-amber-500';
                 } else {
-                  statusText = 'A ritmo normal';
-                  statusColor = 'text-blue-500';
+                  projectedExpected = cat.budget * (monthProgressPercentage / 100);
+                  const difference = cat.total - projectedExpected;
+
+                  if (difference > (cat.budget * 0.1)) {
+                    statusText = 'Gastando rápido';
+                    statusColor = 'text-red-500';
+                  } else if (difference < -(cat.budget * 0.1)) {
+                    statusText = 'Ahorrando';
+                    statusColor = 'text-emerald-500';
+                  } else {
+                    statusText = 'A ritmo normal';
+                    statusColor = 'text-blue-500';
+                  }
                 }
               }
-            }
 
-            return (
-              <div
-                key={idx}
-                className="col-span-1 lg:col-span-1 bg-slate-50 p-4 rounded-xl border border-slate-100"
-              >
-
-                {/* HEADER: categoría */}
-                <div className="flex items-center gap-2 mb-2">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: cat.color || "#cbd5e1" }}
-                  />
-                  <p className="font-semibold text-slate-700" style={{ fontSize: '14px' }}>
-                    {cat.name}
-                  </p>
-                </div>
-
-                {/* INFO */}
-                <div className="flex justify-between items-center text-sm mb-2">
-
-                  {/* LEFT */}
-                  <div className="text-slate-500 text-xs">
-                    {cat.budget > 0 && (
-                      <span>Presupuesto: S/ {cat.budget}</span>
-                    )}
-                  </div>
-
-                  {/* RIGHT */}
-                  <div className="text-right">
-                    <p className="font-bold text-slate-800">
-                      S/ {cat.total?.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {percentageUsed.toFixed(1)}% usado
+              return (
+                <div
+                  key={idx}
+                  className="bg-slate-50 p-4 rounded-xl border border-slate-100"
+                >
+                  {/* HEADER */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: cat.color || "#cbd5e1" }}
+                    />
+                    <p className="font-semibold text-slate-700 text-sm">
+                      {cat.name}
                     </p>
                   </div>
-                </div>
 
-                {/* PROGRESS */}
-                {cat.budget > 0 && (
-                  <div className="mt-2">
-
-                    <div className="flex justify-between text-[10px] font-medium mb-1">
-                      <span className={statusColor}>{statusText}</span>
-
-                      {!cat.is_single_time && monthProgressPercentage && (
-                        <span className="text-slate-400">
-                          S/ {projectedExpected.toFixed(2)}
-                        </span>
-                      )}
+                  {/* INFO */}
+                  <div className="flex justify-between items-center text-xs mb-2">
+                    <div className="text-slate-500">
+                      {cat.budget > 0 && <span>S/ {cat.budget}</span>}
                     </div>
 
-                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden relative">
+                    <div className="text-right">
+                      <p className="font-bold text-slate-800">
+                        S/ {cat.total?.toFixed(2)}
+                      </p>
+                      <p className="text-slate-500">
+                        {percentageUsed.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
 
-                      {!cat.is_single_time && monthProgressPercentage && (
+                  {/* PROGRESS */}
+                  {cat.budget > 0 && (
+                    <div>
+                      <div className="flex justify-between text-[10px] mb-1">
+                        <span className={statusColor}>{statusText}</span>
+
+                        {!cat.is_single_time && monthProgressPercentage && (
+                          <span className="text-slate-400">
+                            S/ {projectedExpected.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="w-full h-2 bg-slate-200 rounded-full relative overflow-hidden">
+                        {!cat.is_single_time && monthProgressPercentage && (
+                          <div
+                            className="absolute inset-y-0 border-r-2 border-slate-900"
+                            style={{ left: `${monthProgressPercentage}%` }}
+                          />
+                        )}
+
                         <div
-                          className="absolute inset-y-0 border-r-2 border-slate-900 z-10"
-                          style={{ left: `${monthProgressPercentage}%` }}
+                          className={`h-full rounded-full ${isOverBudget ? "bg-red-500" : ""
+                            }`}
+                          style={{
+                            width: `${Math.min(percentageUsed, 100)}%`,
+                            backgroundColor: isOverBudget
+                              ? undefined
+                              : cat.color || "#cbd5e1",
+                          }}
                         />
-                      )}
-
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${isOverBudget ? "bg-red-500" : ""
-                          }`}
-                        style={{
-                          width: `${Math.min(percentageUsed, 100)}%`,
-                          backgroundColor: isOverBudget
-                            ? undefined
-                            : cat.color || "#cbd5e1",
-                        }}
-                      />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-          }
-        </div >
-      </div >
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     );
   };
 
