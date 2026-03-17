@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Select from 'react-select';
 import { Plus, Trash2, Loader2, DollarSign } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -166,13 +167,23 @@ export default function IncomesForm() {
           </div>
           <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Categoría</label>
-            <select
-              value={form.category_id}
-              onChange={e => setForm({ ...form, category_id: e.target.value })}
-              className="w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-            >
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Select
+              options={categories.map(c => ({
+                value: c.id,
+                label: c.name
+              }))}
+              value={
+                categories
+                  .map(c => ({ value: c.id, label: c.name }))
+                  .find(o => o.value === form.category_id) || null
+              }
+              onChange={(option) =>
+                setForm({ ...form, category_id: option?.value || null })
+              }
+              placeholder="Selecciona categoría..."
+              isClearable
+              className=""
+            />
           </div>
         </form>
         <div className="mt-4 flex justify-end">
