@@ -55,7 +55,7 @@ export default function Dashboard() {
     return (
       <div className="mb-8 last:mb-0">
         <h3 className="text-lg font-semibold text-slate-700 mb-4">{title}</h3>
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {data.map((cat, idx) => {
             const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
             const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
@@ -90,62 +90,85 @@ export default function Dashboard() {
             }
 
             return (
-              <div key={idx} className="relative bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-3 h-3 rounded-full mt-1" style={{ backgroundColor: cat.color || '#cbd5e1' }}></span>
-                    <div>
-                      <p className="font-semibold text-slate-700 leading-tight">{cat.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {cat.is_single_time ? 'Fijo (1 vez)' : 'Acumulable'}
-                        {cat.budget > 0 && ` • Ppto: S/ ${cat.budget}`}
-                      </p>
-                    </div>
+              <div
+                key={idx}
+                className="col-span-1 lg:col-span-1 bg-slate-50 p-4 rounded-xl border border-slate-100"
+              >
+
+                {/* HEADER: categoría */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: cat.color || "#cbd5e1" }}
+                  />
+                  <p className="font-semibold text-slate-700" style={{ fontSize: '14px' }}>
+                    {cat.name}
+                  </p>
+                </div>
+
+                {/* INFO */}
+                <div className="flex justify-between items-center text-sm mb-2">
+
+                  {/* LEFT */}
+                  <div className="text-slate-500 text-xs">
+                    {cat.budget > 0 && (
+                      <span>Presupuesto: S/ {cat.budget}</span>
+                    )}
                   </div>
+
+                  {/* RIGHT */}
                   <div className="text-right">
-                    <span className="font-bold text-slate-800">S/ {cat.total?.toFixed(2)}</span>
-                    <p className="text-xs text-slate-500">{percentageUsed.toFixed(1)}% Usado</p>
+                    <p className="font-bold text-slate-800">
+                      S/ {cat.total?.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {percentageUsed.toFixed(1)}% usado
+                    </p>
                   </div>
                 </div>
 
+                {/* PROGRESS */}
                 {cat.budget > 0 && (
-                  <div className="mt-3 relative">
+                  <div className="mt-2">
+
                     <div className="flex justify-between text-[10px] font-medium mb-1">
                       <span className={statusColor}>{statusText}</span>
+
                       {!cat.is_single_time && monthProgressPercentage && (
                         <span className="text-slate-400">
-                          Debería ir: S/ {projectedExpected.toFixed(2)}
+                          S/ {projectedExpected.toFixed(2)}
                         </span>
                       )}
                     </div>
 
-                    {/* Progress container */}
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
-                      {/* Línea meta proyectada de tiempo (si no es fijo) */}
+                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden relative">
+
                       {!cat.is_single_time && monthProgressPercentage && (
                         <div
-                          className="absolute top-0 bottom-0 border-r-2 border-slate-900 z-10"
-                          style={{ left: `${monthProgressPercentage}%`, width: '1px' }}
-                          title={`Días transcurridos: ${monthProgressPercentage.toFixed(0)}%`}
-                        ></div>
+                          className="absolute inset-y-0 border-r-2 border-slate-900 z-10"
+                          style={{ left: `${monthProgressPercentage}%` }}
+                        />
                       )}
 
-                      {/* Barra de progreso real */}
                       <div
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${isOverBudget ? 'bg-red-500' : ''}`}
+                        className={`h-full rounded-full transition-all duration-700 ${isOverBudget ? "bg-red-500" : ""
+                          }`}
                         style={{
                           width: `${Math.min(percentageUsed, 100)}%`,
-                          backgroundColor: isOverBudget ? undefined : cat.color || '#cbd5e1'
+                          backgroundColor: isOverBudget
+                            ? undefined
+                            : cat.color || "#cbd5e1",
                         }}
-                      ></div>
+                      />
                     </div>
                   </div>
                 )}
               </div>
             );
-          })}
-        </div>
-      </div>
+          })
+          }
+        </div >
+      </div >
     );
   };
 
@@ -170,8 +193,8 @@ export default function Dashboard() {
       ) : (
         <>
           {/* Tarjetas KPI Superiores */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center space-x-3 text-emerald-600 mb-2">
                 <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="w-5 h-5" /></div>
                 <span className="font-semibold">Ingresos</span>
@@ -179,7 +202,7 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-800">S/ {totalIngresos.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center space-x-3 text-red-600 mb-2">
                 <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="w-5 h-5" /></div>
                 <span className="font-semibold">Gastos</span>
@@ -187,7 +210,7 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-800">S/ {totalGastos.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
               <div className="flex items-center space-x-3 text-amber-500 mb-2">
                 <div className="p-2 bg-amber-50 rounded-lg"><PiggyBank className="w-5 h-5" /></div>
                 <span className="font-semibold">Ahorro</span>
@@ -195,7 +218,7 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-800">S/ {totalAhorro.toFixed(2)}</p>
             </div>
 
-            <div className={`${balanceNeto >= 0 ? 'bg-blue-600' : 'bg-rose-600'} text-white p-5 rounded-2xl shadow-sm flex flex-col justify-center relative overflow-hidden`}>
+            <div className={`${balanceNeto >= 0 ? 'bg-blue-600' : 'bg-rose-600'} col-span-1  text-white p-5 rounded-2xl shadow-sm flex flex-col justify-center relative overflow-hidden`}>
               <div className="relative z-10">
                 <div className="flex items-center space-x-2 text-white/90 mb-1">
                   <Target className="w-4 h-4" />
@@ -214,7 +237,7 @@ export default function Dashboard() {
             {(catGastosFijos.length === 0 && catGastosAcumulativos.length === 0) ? (
               <div className="py-10 text-center text-slate-500">No hay gastos registrados en este mes.</div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-x-12 gap-y-8">
                 <div>
                   <CategorySection
                     title="📌 Gastos Fijos (1 sola vez)"

@@ -13,15 +13,14 @@ import Landing from './pages/Landing';
 import CompleteProfile from './pages/CompleteProfile';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-function Navigation({ isOpen, setIsOpen }) {
+function Navigation({ isOpen, setIsOpen, onLogoutClick }) {
   const location = useLocation();
-  const { currentUser, projects, activeProject, setActiveProject, loadingProjects, createProject, logout } = useAuth();
+  const { currentUser, projects, activeProject, setActiveProject, loadingProjects, createProject } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -79,7 +78,7 @@ function Navigation({ isOpen, setIsOpen }) {
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
           onClick={() => setIsOpen(false)}
         />
@@ -249,8 +248,8 @@ function Navigation({ isOpen, setIsOpen }) {
         </div>
 
         <div
-          className="p-4 border-t border-slate-800 flex items-center justify-between gap-3 group relative cursor-pointer hover:bg-slate-800/50 transition-colors"
-          onClick={() => setShowLogoutConfirm(true)}
+          className="p-4 border-t border-slate-800 hidden md:flex items-center justify-between gap-3 group relative cursor-pointer hover:bg-slate-800/50 transition-colors"
+          onClick={onLogoutClick}
         >
           <div className="flex gap-3 overflow-hidden items-center">
             <div className="bg-slate-800 p-2 rounded-full shrink-0 group-hover:bg-slate-700 transition-colors">
@@ -267,44 +266,15 @@ function Navigation({ isOpen, setIsOpen }) {
             className="w-4 h-4 text-slate-300 group-hover:text-red-400 shrink-0 transition-colors duration-200"
           />
         </div>
-
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
-                  <LogOut className="w-6 h-6 text-red-500" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Cerrar Sesión</h3>
-                  <p className="text-sm text-slate-400 mt-1">¿Estás seguro que deseas salir?</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(false); }}
-                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => { logout(); }}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-all"
-                >
-                  Cerrar Sesión
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
     </>
   );
 }
 
 function MainApp() {
-  const { isInitializing, currentUser, pendingRegistration, loginWithGoogle, completeRegistration } = useAuth();
+  const { isInitializing, currentUser, pendingRegistration, loginWithGoogle, completeRegistration, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   if (isInitializing) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
@@ -332,21 +302,35 @@ function MainApp() {
 
   return (
     <Router>
-      <div className="flex flex-col md:flex-row bg-slate-50 min-h-screen">
+      <div className="relative flex flex-col md:flex-row bg-slate-50 min-h-screen">
         {/* Mobile Topbar */}
         <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-30 shadow-md">
-          <button onClick={() => setIsMenuOpen(true)} className="p-2 hover:bg-slate-800 rounded-lg">
-            <LayoutGrid className="w-6 h-6 text-blue-500" />
-          </button>
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-medium">{currentUser?.username}</p>
-            <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
-              <User className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsMenuOpen(true)} className="p-2 hover:bg-slate-800 rounded-lg">
+              <LayoutGrid className="w-6 h-6 text-blue-500" />
+            </button>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-blue-500" />
+              Mi Dinero
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-white leading-none mb-1">{currentUser?.username}</p>
+              <p className="text-[10px] text-slate-400 leading-none truncate max-w-[100px]">{currentUser?.email}</p>
             </div>
+            <button 
+              onClick={() => setShowLogoutConfirm(true)} 
+              className="p-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors border border-slate-700"
+              title="Cerrar Sesión"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        <Navigation isOpen={isMenuOpen} setIsOpen={setIsMenuOpen} />
+        <Navigation isOpen={isMenuOpen} setIsOpen={setIsMenuOpen} onLogoutClick={() => setShowLogoutConfirm(true)} />
 
         <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
           <Routes>
@@ -358,6 +342,40 @@ function MainApp() {
             <Route path="/categories" element={<CategoriesManager />} />
           </Routes>
         </main>
+
+        {/* Global Logout Confirmation Modal */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                  <LogOut className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Cerrar Sesión</h3>
+                  <p className="text-sm text-slate-400 mt-1">¿Estás seguro que deseas salir?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    logout();
+                  }}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium shadow-lg shadow-red-900/20 transition-all"
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Router>
   );
