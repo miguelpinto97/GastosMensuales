@@ -244,7 +244,9 @@ function Navigation() {
             </div>
           )}
         </div>
-        <LogOut className="w-4 h-4 text-slate-400 group-hover:text-red-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <LogOut
+          className="w-4 h-4 text-slate-300 group-hover:text-red-400 shrink-0 transition-colors duration-200"
+        />
       </div>
 
       {/* Logout Confirmation Modal */}
