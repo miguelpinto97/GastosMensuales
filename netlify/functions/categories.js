@@ -28,28 +28,40 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'GET') {
 
-      const singleTime = event.queryStringParameters?.single_time;
+      const params = event.queryStringParameters || {};
+      const type = params.type || 'all';
+      const validTypes = ['single', 'accumulative', 'all'];
+      if (!validTypes.includes(type)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ message: 'Invalid type parameter' })
+        };
+      }
 
-      if (singleTime === 'true') {
-        const result = await sql`
-          SELECT *
-          FROM categories
-          WHERE project_id = ${projectId}
-          AND is_single_time = true
-          ORDER BY name ASC
-        `;
+      let filter = sql``;
 
-        return { statusCode: 200, headers, body: JSON.stringify(result) };
+      if (type === 'single') {
+        filter = sql`AND is_single_time = true`;
+      }
+
+      if (type === 'accumulative') {
+        filter = sql`AND is_single_time = false`;
       }
 
       const result = await sql`
-        SELECT *
-        FROM categories
-        WHERE project_id = ${projectId}
-        ORDER BY name ASC
-      `;
+    SELECT *
+    FROM categories
+    WHERE project_id = ${projectId}
+    ${filter}
+    ORDER BY name ASC
+  `;
 
-      return { statusCode: 200, headers, body: JSON.stringify(result) };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(result)
+      };
     }
 
     if (event.httpMethod === 'POST') {

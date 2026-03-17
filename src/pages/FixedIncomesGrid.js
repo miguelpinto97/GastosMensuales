@@ -28,7 +28,7 @@ export default function IncomesForm() {
         setLoading(true);
         try {
             // 1. Fetch Categories (Solo Ingresos)
-            const resCat = await fetch('/.netlify/functions/categories?single_time=true', {
+            const resCat = await fetch('/.netlify/functions/categories?type=single', {
                 headers: getAuthHeaders()
             });
             const dataCat = await resCat.json();

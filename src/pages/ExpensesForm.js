@@ -34,7 +34,7 @@ export default function ExpensesForm() {
   // Filter for only GASTO and AHORRO categories
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/.netlify/functions/categories', {
+      const res = await fetch('/.netlify/functions/categories?type=accumulative', {
         headers: getAuthHeaders()
       });
       const data = await res.json();
@@ -93,11 +93,11 @@ export default function ExpensesForm() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este gasto?')) return;
-    
+
     try {
-      const res = await fetch(`/.netlify/functions/expenses?id=${id}`, { 
+      const res = await fetch(`/.netlify/functions/expenses?id=${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders() 
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         await fetchExpenses(filterMonth);
@@ -113,9 +113,9 @@ export default function ExpensesForm() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-slate-800">Registro de Gastos</h1>
-        
-        <input 
-          type="month" 
+
+        <input
+          type="month"
           value={filterMonth}
           onChange={e => setFilterMonth(e.target.value)}
           className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -125,51 +125,51 @@ export default function ExpensesForm() {
       {/* Formulario */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <h2 className="text-lg font-semibold text-slate-700 mb-4">Nuevo Gasto</h2>
-        <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div className="col-span-1">
-            <label className="block text-sm font-medium text-slate-600 mb-1">Fecha</label>
-            <input 
-              type="date" 
+        <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-12">
+            <label className="col-span-1 block text-sm font-medium text-slate-600 mb-1">Fecha</label>
+            <input
+              type="date"
               value={form.date}
-              onChange={e => setForm({...form, date: e.target.value})}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              className="col-span-3 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
               required
             />
           </div>
-          <div className="col-span-1">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-slate-600 mb-1">Monto (S/)</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <DollarSign className="w-4 h-4 text-slate-400" />
               </div>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="0.01"
                 min="0.01"
                 value={form.amount}
-                onChange={e => setForm({...form, amount: e.target.value})}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
                 className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0.00"
                 required
               />
             </div>
           </div>
-          <div className="col-span-1 md:col-span-2">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-slate-600 mb-1">Concepto</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={form.concept}
-              onChange={e => setForm({...form, concept: e.target.value})}
+              onChange={e => setForm({ ...form, concept: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
               placeholder="Ej. Almuerzo, Gasolina, Supermercado..."
               required
             />
           </div>
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-slate-600 mb-1">Categoría</label>
             <select
               value={form.category_id}
-              onChange={e => setForm({...form, category_id: e.target.value})}
+              onChange={e => setForm({ ...form, category_id: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -177,7 +177,7 @@ export default function ExpensesForm() {
           </div>
         </form>
         <div className="mt-4 flex justify-end">
-          <button 
+          <button
             onClick={handleAddExpense}
             disabled={submitting || !form.amount || !form.concept || !activeProject}
             className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -212,11 +212,11 @@ export default function ExpensesForm() {
                     {new Date(exp.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span 
+                    <span
                       className="px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={{ 
-                        backgroundColor: `${exp.category_color}20`, 
-                        color: exp.category_color || '#475569' 
+                      style={{
+                        backgroundColor: `${exp.category_color}20`,
+                        color: exp.category_color || '#475569'
                       }}
                     >
                       {exp.category_name || 'Sin categoría'}
@@ -227,7 +227,7 @@ export default function ExpensesForm() {
                     S/ {parseFloat(exp.amount).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button 
+                    <button
                       onClick={() => handleDelete(exp.id)}
                       className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
                       title="Eliminar"

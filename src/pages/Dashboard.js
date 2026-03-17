@@ -6,7 +6,7 @@ export default function Dashboard() {
   const { activeProject, getAuthHeaders } = useAuth();
   const [summary, setSummary] = useState({ totalsByType: {}, byCategory: [] });
   const [loading, setLoading] = useState(true);
-  
+
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(currentMonth);
 
@@ -42,7 +42,7 @@ export default function Dashboard() {
   const totalIngresos = summary.totalsByType?.INGRESO || 0;
   const totalGastos = summary.totalsByType?.GASTO || 0;
   const totalAhorro = summary.totalsByType?.AHORRO || 0;
-  
+
   const balanceNeto = totalIngresos - totalGastos - totalAhorro;
 
   // Filtrar categorías (Sólo Gastos)
@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   const CategorySection = ({ title, data, totalType, monthProgressPercentage }) => {
     if (data.length === 0) return null;
-    
+
     return (
       <div className="mb-8 last:mb-0">
         <h3 className="text-lg font-semibold text-slate-700 mb-4">{title}</h3>
@@ -59,7 +59,7 @@ export default function Dashboard() {
           {data.map((cat, idx) => {
             const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
             const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
-            
+
             // Lógica de Proyectado
             let projectedExpected = 0;
             let statusText = '';
@@ -107,7 +107,7 @@ export default function Dashboard() {
                     <p className="text-xs text-slate-500">{percentageUsed.toFixed(1)}% Usado</p>
                   </div>
                 </div>
-                
+
                 {cat.budget > 0 && (
                   <div className="mt-3 relative">
                     <div className="flex justify-between text-[10px] font-medium mb-1">
@@ -118,12 +118,12 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
-                    
+
                     {/* Progress container */}
                     <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden relative">
                       {/* Línea meta proyectada de tiempo (si no es fijo) */}
                       {!cat.is_single_time && monthProgressPercentage && (
-                        <div 
+                        <div
                           className="absolute top-0 bottom-0 border-r-2 border-slate-900 z-10"
                           style={{ left: `${monthProgressPercentage}%`, width: '1px' }}
                           title={`Días transcurridos: ${monthProgressPercentage.toFixed(0)}%`}
@@ -131,11 +131,11 @@ export default function Dashboard() {
                       )}
 
                       {/* Barra de progreso real */}
-                      <div 
-                        className={`h-full rounded-full transition-all duration-1000 ease-out ${isOverBudget ? 'bg-red-500' : ''}`} 
-                        style={{ 
-                          width: `${Math.min(percentageUsed, 100)}%`, 
-                          backgroundColor: isOverBudget ? undefined : cat.color || '#cbd5e1' 
+                      <div
+                        className={`h-full rounded-full transition-all duration-1000 ease-out ${isOverBudget ? 'bg-red-500' : ''}`}
+                        style={{
+                          width: `${Math.min(percentageUsed, 100)}%`,
+                          backgroundColor: isOverBudget ? undefined : cat.color || '#cbd5e1'
                         }}
                       ></div>
                     </div>
@@ -156,9 +156,9 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-slate-800">Resumen Mensual</h1>
           <p className="text-slate-500 mt-1 capitalize">{getMonthName(filterMonth)}</p>
         </div>
-        
-        <input 
-          type="month" 
+
+        <input
+          type="month"
           value={filterMonth}
           onChange={e => setFilterMonth(e.target.value)}
           className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -210,24 +210,24 @@ export default function Dashboard() {
           {/* Gráfico / Distribución por Categoría Dividida */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
             <h2 className="text-xl font-bold text-slate-800 mb-8 border-b pb-4">Desglose de Gastos</h2>
-            
+
             {(catGastosFijos.length === 0 && catGastosAcumulativos.length === 0) ? (
               <div className="py-10 text-center text-slate-500">No hay gastos registrados en este mes.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-8">
                 <div>
-                  <CategorySection 
-                    title="📌 Gastos Fijos (1 sola vez)" 
-                    data={catGastosFijos} 
-                    totalType={totalGastos} 
+                  <CategorySection
+                    title="📌 Gastos Fijos (1 sola vez)"
+                    data={catGastosFijos}
+                    totalType={totalGastos}
                     monthProgressPercentage={summary.monthProgressPercentage}
                   />
                 </div>
                 <div>
-                  <CategorySection 
-                    title="🔄 Gastos Acumulativos" 
-                    data={catGastosAcumulativos} 
-                    totalType={totalGastos} 
+                  <CategorySection
+                    title="🔄 Gastos Acumulativos"
+                    data={catGastosAcumulativos}
+                    totalType={totalGastos}
                     monthProgressPercentage={summary.monthProgressPercentage}
                   />
                 </div>

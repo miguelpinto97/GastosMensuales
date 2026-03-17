@@ -33,8 +33,8 @@ export default function IncomesForm() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/.netlify/functions/categories', {
-         headers: getAuthHeaders()
+      const res = await fetch('/.netlify/functions/categories?type=accumulative', {
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       const incomeCategories = Array.isArray(data) ? data.filter(c => c.type === 'INGRESO') : [];
@@ -51,7 +51,7 @@ export default function IncomesForm() {
     setLoading(true);
     try {
       const res = await fetch(`/.netlify/functions/expenses?month=${month}`, {
-         headers: getAuthHeaders()
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       // Filtrar solo los movimientos que pertenecen a categorías tipo 'INGRESO'
@@ -93,16 +93,16 @@ export default function IncomesForm() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar este ingreso?')) return;
-    
+
     try {
-      const res = await fetch(`/.netlify/functions/expenses?id=${id}`, { 
-         method: 'DELETE',
-         headers: getAuthHeaders() 
+      const res = await fetch(`/.netlify/functions/expenses?id=${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
       if (res.ok) {
         await fetchIncomes(filterMonth);
       } else {
-         alert('No tienes permiso para eliminar este registro.');
+        alert('No tienes permiso para eliminar este registro.');
       }
     } catch (err) {
       console.error('Error deleting income:', err);
@@ -113,9 +113,9 @@ export default function IncomesForm() {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-slate-800">Registro de Ingresos</h1>
-        
-        <input 
-          type="month" 
+
+        <input
+          type="month"
           value={filterMonth}
           onChange={e => setFilterMonth(e.target.value)}
           className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -124,51 +124,51 @@ export default function IncomesForm() {
 
       <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-xl shadow-sm">
         <h2 className="text-lg font-semibold text-emerald-800 mb-4">Nuevo Ingreso</h2>
-        <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div className="col-span-1">
-            <label className="block text-sm font-medium text-emerald-700 mb-1">Fecha</label>
-            <input 
-              type="date" 
+        <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+          <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-12">
+            <label className="col-span-1 block text-sm font-medium text-emerald-700 mb-1">Fecha</label>
+            <input
+              type="date"
               value={form.date}
-              onChange={e => setForm({...form, date: e.target.value})}
-              className="w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              className="col-span-3 w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
               required
             />
           </div>
-          <div className="col-span-1">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Monto (S/)</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <DollarSign className="w-4 h-4 text-emerald-400" />
               </div>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="0.01"
                 min="0.01"
                 value={form.amount}
-                onChange={e => setForm({...form, amount: e.target.value})}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
                 className="w-full pl-9 pr-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                 placeholder="0.00"
                 required
               />
             </div>
           </div>
-          <div className="col-span-1 md:col-span-2">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Concepto</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={form.concept}
-              onChange={e => setForm({...form, concept: e.target.value})}
+              onChange={e => setForm({ ...form, concept: e.target.value })}
               className="w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
               placeholder="Ej. Sueldo, Transferencia..."
               required
             />
           </div>
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Categoría</label>
             <select
               value={form.category_id}
-              onChange={e => setForm({...form, category_id: e.target.value})}
+              onChange={e => setForm({ ...form, category_id: e.target.value })}
               className="w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
             >
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -176,7 +176,7 @@ export default function IncomesForm() {
           </div>
         </form>
         <div className="mt-4 flex justify-end">
-          <button 
+          <button
             onClick={handleAddIncome}
             disabled={submitting || !form.amount || !form.concept || !activeProject}
             className="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-2"
@@ -210,11 +210,11 @@ export default function IncomesForm() {
                     {new Date(item.date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span 
+                    <span
                       className="px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={{ 
-                        backgroundColor: `${item.category_color}20`, 
-                        color: item.category_color || '#475569' 
+                      style={{
+                        backgroundColor: `${item.category_color}20`,
+                        color: item.category_color || '#475569'
                       }}
                     >
                       {item.category_name || 'Sin categoría'}
@@ -226,7 +226,7 @@ export default function IncomesForm() {
                   </td>
                   <td className="px-6 py-4 text-center">
                     {isOwner(item.created_by) ? (
-                      <button 
+                      <button
                         onClick={() => handleDelete(item.id)}
                         className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
                         title="Eliminar"
