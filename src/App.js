@@ -252,8 +252,12 @@ function Navigation({ isOpen, setIsOpen, onLogoutClick }) {
           onClick={onLogoutClick}
         >
           <div className="flex gap-3 overflow-hidden items-center">
-            <div className="bg-slate-800 p-2 rounded-full shrink-0 group-hover:bg-slate-700 transition-colors">
-              <User className="w-5 h-5 text-slate-400 group-hover:text-red-400 transition-colors" />
+            <div className="bg-slate-800 rounded-full shrink-0 group-hover:ring-2 group-hover:ring-blue-500/50 transition-all overflow-hidden">
+              {currentUser?.picture ? (
+                <img src={currentUser.picture} alt="User" className="w-9 h-9 object-cover" />
+              ) : (
+                <div className="p-2"><User className="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors" /></div>
+              )}
             </div>
             {(!collapsed || isOpen) && (
               <div className="overflow-hidden">
@@ -315,7 +319,10 @@ function MainApp() {
             </h2>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {currentUser?.picture && (
+              <img src={currentUser.picture} alt="User" className="w-8 h-8 rounded-full border border-slate-700" />
+            )}
             <div className="text-right">
               <p className="text-sm font-medium text-white leading-none mb-1">{currentUser?.username}</p>
               <p className="text-[10px] text-slate-400 leading-none truncate max-w-[100px]">{currentUser?.email}</p>

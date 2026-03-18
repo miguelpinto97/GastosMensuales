@@ -23,7 +23,11 @@ export function AuthProvider({ children }) {
         if (decoded.exp * 1000 < Date.now()) {
           logout();
         } else {
-          setCurrentUser({ username: decoded.username, email: decoded.email });
+          setCurrentUser({ 
+            username: decoded.username, 
+            email: decoded.email,
+            picture: decoded.picture
+          });
         }
       } catch (err) {
         logout();
