@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
-import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff, ArrowUpDown, ChevronUp, ChevronDown, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function ExpensesForm() {
@@ -19,6 +19,10 @@ export default function ExpensesForm() {
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const [filterMonth, setFilterMonth] = useState(currentMonth);
+
+  // Sorting and Filtering State
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
     if (activeProject) {
@@ -109,6 +113,44 @@ export default function ExpensesForm() {
       console.error('Error deleting expense:', err);
     }
   };
+
+  // Sorting logic
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUp className="w-3 h-3 ml-1 text-blue-600" /> 
+      : <ChevronDown className="w-3 h-3 ml-1 text-blue-600" />;
+  };
+
+  // Filter and Sort Processing
+  const filteredExpenses = expenses.filter(exp => {
+    if (categoryFilter === 'all') return true;
+    return exp.category_id?.toString() === categoryFilter;
+  });
+
+  const sortedExpenses = [...filteredExpenses].sort((a, b) => {
+    const { key, direction } = sortConfig;
+    let aValue = a[key];
+    let bValue = b[key];
+
+    // Handle special cases for names coming from related fields
+    if (key === 'category') {
+      aValue = a.category_name || '';
+      bValue = b.category_name || '';
+    }
+
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState(null);
@@ -343,23 +385,68 @@ export default function ExpensesForm() {
 
       {/* Tabla Histórica */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-auto">
+        <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            Historial de Gastos
+            <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+              {sortedExpenses.length} registros
+            </span>
+          </h2>
+
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="text-xs bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none truncate max-w-[150px]"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="p-8 flex justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>
-        ) : expenses.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">No hay gastos en este mes.</div>
+        ) : sortedExpenses.length === 0 ? (
+          <div className="p-8 text-center text-slate-500">
+            {expenses.length === 0 ? "No hay gastos en este mes." : "No hay gastos que coincidan con el filtro."}
+          </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
-                <th className="px-6 py-4">Fecha</th>
-                <th className="px-6 py-4">Categoría</th>
-                <th className="px-6 py-4">Concepto</th>
-                <th className="px-6 py-4 text-right">Monto</th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => requestSort('date')}
+                >
+                  <div className="flex items-center">Fecha {getSortIcon('date')}</div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => requestSort('category')}
+                >
+                  <div className="flex items-center">Categoría {getSortIcon('category')}</div>
+                </th>
+                <th 
+                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => requestSort('concept')}
+                >
+                  <div className="flex items-center">Concepto {getSortIcon('concept')}</div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                  onClick={() => requestSort('amount')}
+                >
+                  <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
+                </th>
                 <th className="px-6 py-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {expenses.map(exp => (
+              {sortedExpenses.map(exp => (
                 <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
                   <td className="px-6 py-4 text-slate-500">
                     {new Date(exp.date).toLocaleDateString()}
