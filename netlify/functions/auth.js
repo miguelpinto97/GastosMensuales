@@ -58,7 +58,7 @@ exports.handler = async (event) => {
                 // Usuario existe, generar JWT de sesión
                 const user = users[0];
                 const sessionToken = jwt.sign(
-                    { username: user.username, email: user.email },
+                    { username: user.username, email: user.email, picture: payload.picture },
                     JWT_SECRET,
                     { expiresIn: '7d' }  // 1 semana de sesión
                 );
@@ -69,7 +69,7 @@ exports.handler = async (event) => {
                     body: JSON.stringify({
                         success: true,
                         token: sessionToken,
-                        user: { username: user.username, email: user.email }
+                        user: { username: user.username, email: user.email, picture: payload.picture }
                     })
                 };
             } else {
@@ -113,7 +113,7 @@ exports.handler = async (event) => {
 
             // Generar JWT
             const sessionToken = jwt.sign(
-                { username: username, email: email },
+                { username: username, email: email, picture: payload.picture },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -124,7 +124,7 @@ exports.handler = async (event) => {
                 body: JSON.stringify({
                     success: true,
                     token: sessionToken,
-                    user: { username, email }
+                    user: { username, email, picture: payload.picture }
                 })
             };
         }
