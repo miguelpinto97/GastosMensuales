@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, TrendingDown, TrendingUp, DollarSign, CalendarCheck, PiggyBank, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ChevronDown } from 'lucide-react';
 
 export default function Dashboard() {
   const { activeProject, getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState({ totalsByType: {}, byCategory: [] });
   const [loading, setLoading] = useState(true);
 
@@ -203,17 +205,23 @@ export default function Dashboard() {
         <>
           {/* Tarjetas KPI Superiores */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div 
+              onClick={() => navigate('/incomes')}
+              className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-50/10 transition-all group"
+            >
               <div className="flex items-center space-x-3 text-emerald-600 mb-2">
-                <div className="p-2 bg-emerald-50 rounded-lg"><TrendingUp className="w-5 h-5" /></div>
+                <div className="p-2 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors"><TrendingUp className="w-5 h-5" /></div>
                 <span className="font-semibold">Ingresos</span>
               </div>
               <p className="text-2xl font-bold text-slate-800">S/ {totalIngresos.toFixed(2)}</p>
             </div>
 
-            <div className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div 
+              onClick={() => navigate('/expenses')}
+              className="col-span-1 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-red-500/50 hover:bg-red-50/10 transition-all group"
+            >
               <div className="flex items-center space-x-3 text-red-600 mb-2">
-                <div className="p-2 bg-red-50 rounded-lg"><TrendingDown className="w-5 h-5" /></div>
+                <div className="p-2 bg-red-50 rounded-lg group-hover:bg-red-100 transition-colors"><TrendingDown className="w-5 h-5" /></div>
                 <span className="font-semibold">Gastos</span>
               </div>
               <p className="text-2xl font-bold text-slate-800">S/ {totalGastos.toFixed(2)}</p>

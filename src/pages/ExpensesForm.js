@@ -175,13 +175,13 @@ export default function ExpensesForm() {
     const searchTextAfter = afterAmount.toLowerCase().trim();
     if (searchTextAfter) {
       const spokenWords = searchTextAfter.split(/\s+/).filter(w => w.length >= 3);
-      
+
       for (const cat of sortedCategories) {
         const catNameFull = cat.name.toLowerCase();
         // Clean name removes parentheses but we keep the content for matching if needed
         const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
         const catWords = catNameClean.split(/\s+/).filter(w => w.length >= 3);
-        
+
         // 1. Exact or partial string match (Bidirectional)
         const spokenContainsCat = searchTextAfter.includes(catNameClean) || searchTextAfter.includes(catNameFull);
         const catContainsSpoken = catNameClean.includes(searchTextAfter) || catNameFull.includes(searchTextAfter);
@@ -211,7 +211,7 @@ export default function ExpensesForm() {
     // If concept is empty but we have text after amount that wasn't the category, 
     // maybe parts of it are the concept? (Fallback but following order)
     if (!concept && afterAmount && !categoryFound) {
-       concept = afterAmount;
+      concept = afterAmount;
     }
 
     if (concept.length > 0) {
@@ -230,7 +230,7 @@ export default function ExpensesForm() {
     } else {
       setVoiceFeedback(`Capturado: "${concept}" S/ ${amount} (Categoría no detectada)`);
     }
-    
+
     setTimeout(() => setVoiceFeedback(null), 6000);
   };
 
@@ -253,11 +253,10 @@ export default function ExpensesForm() {
           <h2 className="text-lg font-semibold text-slate-700">Nuevo Gasto</h2>
           <button
             onClick={startVoiceInput}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-              isListening
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${isListening
                 ? 'bg-red-100 text-red-600 animate-pulse'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+              }`}
           >
             {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             {isListening ? 'Escuchando...' : 'Registrar por voz'}
@@ -343,7 +342,7 @@ export default function ExpensesForm() {
       </div>
 
       {/* Tabla Histórica */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-auto">
         {loading ? (
           <div className="p-8 flex justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>
         ) : expenses.length === 0 ? (
