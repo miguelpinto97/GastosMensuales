@@ -174,17 +174,22 @@ export default function ExpensesForm() {
     // Primary search: after the amount (as per requested order)
     const searchTextAfter = afterAmount.toLowerCase().trim();
     if (searchTextAfter) {
+      const spokenWords = searchTextAfter.split(/\s+/).filter(w => w.length >= 3);
+      
       for (const cat of sortedCategories) {
         const catNameFull = cat.name.toLowerCase();
-        const catNameClean = catNameFull.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+        // Clean name removes parentheses but we keep the content for matching if needed
+        const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+        const catWords = catNameClean.split(/\s+/).filter(w => w.length >= 3);
         
-        // Match if:
-        // 1. Spoken text contains the category name (full or clean)
-        // 2. Category name contains the spoken text (only if spoken text is at least 3 chars)
+        // 1. Exact or partial string match (Bidirectional)
         const spokenContainsCat = searchTextAfter.includes(catNameClean) || searchTextAfter.includes(catNameFull);
-        const catContainsSpoken = (searchTextAfter.length >= 3) && (catNameClean.includes(searchTextAfter) || catNameFull.includes(searchTextAfter));
+        const catContainsSpoken = catNameClean.includes(searchTextAfter) || catNameFull.includes(searchTextAfter);
 
-        if (spokenContainsCat || catContainsSpoken) {
+        // 2. Word-level match (e.g. "Trabajo" matching "Transportes (Trabajo)")
+        const wordMatch = spokenWords.some(sw => catWords.some(cw => cw.includes(sw) || sw.includes(cw)));
+
+        if (spokenContainsCat || catContainsSpoken || wordMatch) {
           matchedCategoryId = cat.id;
           matchedCatName = cat.name;
           categoryFound = true;
