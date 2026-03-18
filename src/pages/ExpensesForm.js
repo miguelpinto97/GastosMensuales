@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
-import { Plus, Trash2, Loader2, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function ExpensesForm() {
@@ -42,7 +42,7 @@ export default function ExpensesForm() {
       const expenseCategories = Array.isArray(data) ? data.filter(c => c.type !== 'INGRESO') : [];
       setCategories(expenseCategories);
       if (expenseCategories.length > 0) {
-        setForm(prev => ({ ...prev, category_id: expenseCategories[0].id.toString() }));
+        setForm(prev => ({ ...prev, category_id: expenseCategories[0].id }));
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -110,6 +110,125 @@ export default function ExpensesForm() {
     }
   };
 
+  const [isListening, setIsListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState(null);
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz. Prueba con Chrome o Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      console.log('Transcript:', transcript);
+      parseVoiceInput(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const parseVoiceInput = (text) => {
+    // 1. Extract Amount and its position
+    const amountMatch = text.match(/(\d+([.,]\d+)?)/);
+    if (!amountMatch) {
+      alert("No pude detectar un monto. Formato sugerido: 'Concepto Monto Categoría'");
+      return;
+    }
+
+    const amount = amountMatch[1].replace(',', '.');
+    const amountStr = amountMatch[0];
+    const amountIndex = text.indexOf(amountStr);
+
+    // 2. Split by Amount to respect strict order: [Concepto] [Monto] [Categoría]
+    const beforeAmount = text.substring(0, amountIndex).trim();
+    const afterAmount = text.substring(amountIndex + amountStr.length).trim();
+
+    // 3. Identify Category in the text AFTER the amount
+    let matchedCategoryId = form.category_id;
+    let categoryFound = false;
+    let matchedCatName = '';
+
+    // Sort categories by length descending to match longer names first
+    const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
+
+    // Primary search: after the amount (as per requested order)
+    const searchTextAfter = afterAmount.toLowerCase().trim();
+    if (searchTextAfter) {
+      for (const cat of sortedCategories) {
+        const catNameFull = cat.name.toLowerCase();
+        const catNameClean = catNameFull.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+        
+        // Match if:
+        // 1. Spoken text contains the category name (full or clean)
+        // 2. Category name contains the spoken text (only if spoken text is at least 3 chars)
+        const spokenContainsCat = searchTextAfter.includes(catNameClean) || searchTextAfter.includes(catNameFull);
+        const catContainsSpoken = (searchTextAfter.length >= 3) && (catNameClean.includes(searchTextAfter) || catNameFull.includes(searchTextAfter));
+
+        if (spokenContainsCat || catContainsSpoken) {
+          matchedCategoryId = cat.id;
+          matchedCatName = cat.name;
+          categoryFound = true;
+          break;
+        }
+      }
+    }
+
+    // 4. Identify Concept (Text before amount)
+    let concept = beforeAmount;
+
+    // Clean up concept (remove common filler words)
+    const fillers = ['gasté', 'pagé', 'pagué', 'el', 'la', 'un', 'una', 'de', 'del', 'por', 'con', 'en'];
+    concept = concept.split(/\s+/)
+      .filter(word => !fillers.includes(word))
+      .join(' ')
+      .trim();
+
+    // If concept is empty but we have text after amount that wasn't the category, 
+    // maybe parts of it are the concept? (Fallback but following order)
+    if (!concept && afterAmount && !categoryFound) {
+       concept = afterAmount;
+    }
+
+    if (concept.length > 0) {
+      concept = concept.charAt(0).toUpperCase() + concept.slice(1);
+    }
+
+    setForm(prev => ({
+      ...prev,
+      amount: amount,
+      concept: concept || prev.concept,
+      category_id: matchedCategoryId
+    }));
+
+    if (categoryFound) {
+      setVoiceFeedback(`Capturado: "${concept}" S/ ${amount} en [${matchedCatName}]`);
+    } else {
+      setVoiceFeedback(`Capturado: "${concept}" S/ ${amount} (Categoría no detectada)`);
+    }
+    
+    setTimeout(() => setVoiceFeedback(null), 6000);
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
@@ -125,7 +244,25 @@ export default function ExpensesForm() {
 
       {/* Formulario */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Nuevo Gasto</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-slate-700">Nuevo Gasto</h2>
+          <button
+            onClick={startVoiceInput}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              isListening
+                ? 'bg-red-100 text-red-600 animate-pulse'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            {isListening ? 'Escuchando...' : 'Registrar por voz'}
+          </button>
+        </div>
+        {voiceFeedback && (
+          <div className="mb-4 p-2 bg-blue-50 border border-blue-100 text-blue-700 text-xs rounded-lg animate-in fade-in duration-300">
+            {voiceFeedback}
+          </div>
+        )}
         <form onSubmit={handleAddExpense} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-12">
             <label className="col-span-1 block text-sm font-medium text-slate-600 mb-1">Fecha</label>
