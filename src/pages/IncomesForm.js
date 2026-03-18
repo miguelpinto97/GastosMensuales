@@ -125,8 +125,8 @@ export default function IncomesForm() {
 
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-30" />;
-    return sortConfig.direction === 'asc' 
-      ? <ChevronUp className="w-3 h-3 ml-1 text-emerald-600" /> 
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp className="w-3 h-3 ml-1 text-emerald-600" />
       : <ChevronDown className="w-3 h-3 ml-1 text-emerald-600" />;
   };
 
@@ -240,7 +240,7 @@ export default function IncomesForm() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
           <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             Historial de Ingresos
@@ -264,82 +264,85 @@ export default function IncomesForm() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="p-8 flex justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>
-        ) : sortedIncomes.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
-            {incomes.length === 0 ? "No hay ingresos registrados en este mes." : "No hay ingresos que coincidan con el filtro."}
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
-                  onClick={() => requestSort('date')}
-                >
-                  <div className="flex items-center">Fecha {getSortIcon('date')}</div>
-                </th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
-                  onClick={() => requestSort('category')}
-                >
-                  <div className="flex items-center">Categoría {getSortIcon('category')}</div>
-                </th>
-                <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
-                  onClick={() => requestSort('concept')}
-                >
-                  <div className="flex items-center">Concepto {getSortIcon('concept')}</div>
-                </th>
-                <th 
-                  className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
-                  onClick={() => requestSort('amount')}
-                >
-                  <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
-                </th>
-                <th className="px-6 py-4 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedIncomes.map(item => (
-                <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
-                  <td className="px-6 py-4 text-slate-500">
-                    {new Date(item.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className="px-2.5 py-1 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor: `${item.category_color}20`,
-                        color: item.category_color || '#475569'
-                      }}
-                    >
-                      {item.category_name || 'Sin categoría'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-800">{item.concept}</td>
-                  <td className="px-6 py-4 text-right font-medium text-emerald-600">
-                    S/ {parseFloat(item.amount).toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    {isOwner(item.created_by) ? (
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4 mx-auto" />
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-400">---</span>
-                    )}
-                  </td>
+        <div className='overflow-auto'>
+          {loading ? (
+            <div className="p-8 flex justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>
+          ) : sortedIncomes.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">
+              {incomes.length === 0 ? "No hay ingresos registrados en este mes." : "No hay ingresos que coincidan con el filtro."}
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
+                  <th
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('date')}
+                  >
+                    <div className="flex items-center">Fecha {getSortIcon('date')}</div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('category')}
+                  >
+                    <div className="flex items-center">Categoría {getSortIcon('category')}</div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('concept')}
+                  >
+                    <div className="flex items-center">Concepto {getSortIcon('concept')}</div>
+                  </th>
+                  <th
+                    className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('amount')}
+                  >
+                    <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
+                  </th>
+                  <th className="px-6 py-4 text-center">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {sortedIncomes.map(item => (
+                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
+                    <td className="px-6 py-4 text-slate-500">
+                      {new Date(item.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className="px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{
+                          backgroundColor: `${item.category_color}20`,
+                          color: item.category_color || '#475569'
+                        }}
+                      >
+                        {item.category_name || 'Sin categoría'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-800">{item.concept}</td>
+                    <td className="px-6 py-4 text-right font-medium text-emerald-600">
+                      S/ {parseFloat(item.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {isOwner(item.created_by) ? (
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4 mx-auto" />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">---</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
       </div>
     </div>
   );
