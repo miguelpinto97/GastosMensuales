@@ -21,7 +21,7 @@ export default function IncomesForm() {
   const [filterMonth, setFilterMonth] = useState(currentMonth);
 
   // Sorting and Filtering State
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'correlative', direction: 'desc' });
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
@@ -61,7 +61,13 @@ export default function IncomesForm() {
       const data = await res.json();
       // Filtrar solo los movimientos que pertenecen a categorías tipo 'INGRESO'
       const onlyIncomes = Array.isArray(data) ? data.filter(item => item.category_type === 'INGRESO') : [];
-      setIncomes(onlyIncomes);
+
+      // Asignar correlativo basado en el ID (orden de creación)
+      const withCorrelative = [...onlyIncomes]
+        .sort((a, b) => a.id - b.id)
+        .map((item, index) => ({ ...item, correlative: index + 1 }));
+
+      setIncomes(withCorrelative);
     } catch (err) {
       console.error('Error fetching incomes:', err);
     } finally {
@@ -277,6 +283,12 @@ export default function IncomesForm() {
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
                   <th
                     className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('correlative')}
+                  >
+                    <div className="flex items-center">N° {getSortIcon('correlative')}</div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => requestSort('date')}
                   >
                     <div className="flex items-center">Fecha {getSortIcon('date')}</div>
@@ -299,12 +311,16 @@ export default function IncomesForm() {
                   >
                     <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
                   </th>
+                  <th className="px-6 py-4 text-center">Usuario</th>
                   <th className="px-6 py-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedIncomes.map(item => (
                   <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
+                    <td className="px-6 py-4 text-slate-400 font-mono text-xs">
+                      {item.correlative}
+                    </td>
                     <td className="px-6 py-4 text-slate-500">
                       {new Date(item.date).toLocaleDateString()}
                     </td>
@@ -322,6 +338,9 @@ export default function IncomesForm() {
                     <td className="px-6 py-4 font-medium text-slate-800">{item.concept}</td>
                     <td className="px-6 py-4 text-right font-medium text-emerald-600">
                       S/ {parseFloat(item.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-500 font-medium">
+                      {item.created_by}
                     </td>
                     <td className="px-6 py-4 text-center">
                       {isOwner(item.created_by) ? (

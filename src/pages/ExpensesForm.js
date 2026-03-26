@@ -21,7 +21,7 @@ export default function ExpensesForm() {
   const [filterMonth, setFilterMonth] = useState(currentMonth);
 
   // Sorting and Filtering State
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'correlative', direction: 'desc' });
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
@@ -61,7 +61,13 @@ export default function ExpensesForm() {
       });
       const data = await res.json();
       const onlyExpenses = Array.isArray(data) ? data.filter(item => item.category_type !== 'INGRESO') : [];
-      setExpenses(onlyExpenses);
+
+      // Asignar correlativo basado en el ID (orden de creación)
+      const withCorrelative = [...onlyExpenses]
+        .sort((a, b) => a.id - b.id)
+        .map((item, index) => ({ ...item, correlative: index + 1 }));
+
+      setExpenses(withCorrelative);
     } catch (err) {
       console.error('Error fetching expenses:', err);
     } finally {
@@ -422,6 +428,12 @@ export default function ExpensesForm() {
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
                   <th
                     className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => requestSort('correlative')}
+                  >
+                    <div className="flex items-center">N° {getSortIcon('correlative')}</div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => requestSort('date')}
                   >
                     <div className="flex items-center">Fecha {getSortIcon('date')}</div>
@@ -444,12 +456,16 @@ export default function ExpensesForm() {
                   >
                     <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
                   </th>
+                  <th className="px-6 py-4 text-center">Usuario</th>
                   <th className="px-6 py-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedExpenses.map(exp => (
                   <tr key={exp.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
+                    <td className="px-6 py-4 text-slate-400 font-mono text-xs">
+                      {exp.correlative}
+                    </td>
                     <td className="px-6 py-4 text-slate-500">
                       {new Date(exp.date).toLocaleDateString()}
                     </td>
@@ -467,6 +483,9 @@ export default function ExpensesForm() {
                     <td className="px-6 py-4 font-medium text-slate-800">{exp.concept}</td>
                     <td className="px-6 py-4 text-right font-medium">
                       S/ {parseFloat(exp.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-500 font-medium">
+                      {exp.created_by}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <button
