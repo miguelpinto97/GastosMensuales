@@ -400,17 +400,42 @@ export default function ExpensesForm() {
           </h2>
 
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="text-xs bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none truncate max-w-[150px]"
-            >
-              <option value="all">Todas las categorías</option>
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-sm">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="text-xs bg-transparent border-none focus:ring-0 outline-none truncate max-w-[100px] md:max-w-[150px]"
+              >
+                <option value="all">Categorías</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selector de ordenamiento para móvil */}
+            <div className="md:hidden flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-sm">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={sortConfig.key}
+                onChange={(e) => setSortConfig(prev => ({ ...prev, key: e.target.value }))}
+                className="text-xs bg-transparent border-none focus:ring-0 outline-none"
+              >
+                <option value="correlative">N°</option>
+                <option value="date">Fecha</option>
+                <option value="category">Cat.</option>
+                <option value="concept">Conc.</option>
+                <option value="amount">Monto</option>
+              </select>
+              <button 
+                onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+                title="Cambiar dirección"
+              >
+                {sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -423,7 +448,10 @@ export default function ExpensesForm() {
               {expenses.length === 0 ? "No hay gastos en este mes." : "No hay gastos que coincidan con el filtro."}
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <>
+              {/* Vista de Tabla (Desktop) */}
+              <div className="hidden md:block">
+                <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm font-medium">
                   <th
@@ -500,8 +528,50 @@ export default function ExpensesForm() {
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+
+          {/* Vista de Tarjetas (Mobile) */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {sortedExpenses.map(exp => (
+              <div key={exp.id} className="p-4 bg-white hover:bg-slate-50 transition-colors">
+                <div className="flex justify-between items-start mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">N° {exp.correlative}</span>
+                    <span className="text-xs font-medium text-slate-500">{new Date(exp.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-900">S/ {parseFloat(exp.amount).toFixed(2)}</div>
+                </div>
+                
+                <div className="text-sm font-semibold text-slate-800 mb-2">{exp.concept}</div>
+                
+                <div className="flex justify-between items-center">
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{
+                      backgroundColor: `${exp.category_color}20`,
+                      color: exp.category_color || '#475569'
+                    }}
+                  >
+                    {exp.category_name || 'Sin categoría'}
+                  </span>
+                  
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-slate-400 font-medium">{exp.created_by}</span>
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="text-red-400 hover:text-red-600 p-1"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
 
       </div>
     </div>
