@@ -382,7 +382,7 @@ export default function ExpensesForm() {
                 })
                 .map(c => ({
                   id: c.id,
-                  name: c.name,
+                  name: c.group_name ? `${c.group_name} - ${c.name}` : c.name,
                   color: c.color
                 }))
               }
@@ -530,7 +530,7 @@ export default function ExpensesForm() {
                           color: exp.category_color || '#475569'
                         }}
                       >
-                        {exp.category_name || 'Sin categoría'}
+                        {exp.group_name ? `${exp.group_name} - ${exp.category_name}` : (exp.category_name || 'Sin categoría')}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">
@@ -581,7 +581,7 @@ export default function ExpensesForm() {
                       color: exp.category_color || '#475569'
                     }}
                   >
-                    {exp.category_name || 'Sin categoría'}
+                    {exp.group_name ? `${exp.group_name} - ${exp.category_name}` : (exp.category_name || 'Sin categoría')}
                   </span>
                   
                   <div className="flex items-center gap-3">

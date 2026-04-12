@@ -49,29 +49,35 @@ export default function Dashboard() {
 
   const balanceNeto = totalIngresos - totalGastos - totalAhorro;
 
-  // Agrupamiento por SuperCategoría (Grupos)
-  const groupsData = (summary.byCategory || []).reduce((acc, cat) => {
-    if (cat.type !== 'GASTO') return acc;
-    const groupName = cat.group_name || 'Otros / Sin Grupo';
-    const groupColor = cat.group_color || '#94a3b8';
-    
-    if (!acc[groupName]) {
-      acc[groupName] = { 
-        name: groupName, 
-        color: groupColor, 
-        total: 0, 
-        budget: 0,
-        is_single_time: cat.is_single_time, // Simplificación: usamos el del primer item
-        categories: [] 
-      };
-    }
-    acc[groupName].total += parseFloat(cat.total || 0);
-    acc[groupName].budget += parseFloat(cat.budget || 0);
-    acc[groupName].categories.push(cat);
-    return acc;
-  }, {});
+  // Lógica de Agrupamiento por SuperCategoría (Grupos)
+  const groupData = (list) => {
+    const grouped = {};
+    const ungrouped = [];
 
-  const catGroups = Object.values(groupsData).sort((a, b) => b.total - a.total);
+    list.forEach(cat => {
+      if (cat.group_id) {
+        if (!grouped[cat.group_id]) {
+          grouped[cat.group_id] = {
+            id: cat.group_id,
+            name: cat.group_name,
+            isGroup: true,
+            color: cat.group_color || cat.color,
+            total: 0,
+            budget: 0,
+            is_single_time: cat.is_single_time,
+            categories: []
+          };
+        }
+        grouped[cat.group_id].total += parseFloat(cat.total || 0);
+        grouped[cat.group_id].budget += parseFloat(cat.budget || 0);
+        grouped[cat.group_id].categories.push(cat);
+      } else {
+        ungrouped.push(cat);
+      }
+    });
+
+    return [...Object.values(grouped), ...ungrouped].sort((a, b) => b.total - a.total);
+  };
 
   // Filtrar categorías (Sólo Gastos) para vista normal
   const catGastosFijos = (summary.byCategory?.filter(c => c.type === 'GASTO' && c.is_single_time) || [])
@@ -148,9 +154,9 @@ export default function Dashboard() {
                         style={{ backgroundColor: cat.color || "#cbd5e1" }}
                       />
                       <p className="font-bold text-slate-700 text-sm truncate">
-                        {cat.name}
+                        {cat.isGroup ? cat.name : (cat.group_name ? `${cat.group_name} - ${cat.name}` : cat.name)}
                         {cat.categories && (
-                           <span className="ml-1 text-[10px] font-normal text-slate-400">({cat.categories.length} cat.)</span>
+                          <span className="ml-1 text-[10px] font-normal text-slate-400">({cat.categories.length} cat.)</span>
                         )}
                       </p>
                     </div>
@@ -297,29 +303,18 @@ export default function Dashboard() {
               <div className="py-10 text-center text-slate-500">No hay gastos registrados en este mes.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-1 gap-x-12 gap-y-8">
-                {viewMode === 'category' ? (
-                  <>
-                    <CategorySection
-                      title="📌 Gastos Fijos (1 sola vez)"
-                      data={catGastosFijos}
-                      totalType={totalGastos}
-                      monthProgressPercentage={summary.monthProgressPercentage}
-                    />
-                    <CategorySection
-                      title="🔄 Gastos Acumulativos"
-                      data={catGastosAcumulativos}
-                      totalType={totalGastos}
-                      monthProgressPercentage={summary.monthProgressPercentage}
-                    />
-                  </>
-                ) : (
-                  <CategorySection
-                    title="📂 Gastos por SuperCategoría"
-                    data={catGroups}
-                    totalType={totalGastos}
-                    monthProgressPercentage={summary.monthProgressPercentage}
-                  />
-                )}
+                <CategorySection
+                  title={viewMode === 'category' ? "📌 Gastos Fijos (1 sola vez)" : "📂 Grupos: Gastos Fijos"}
+                  data={viewMode === 'category' ? catGastosFijos : groupData(catGastosFijos)}
+                  totalType={totalGastos}
+                  monthProgressPercentage={summary.monthProgressPercentage}
+                />
+                <CategorySection
+                  title={viewMode === 'category' ? "🔄 Gastos Acumulativos" : "📂 Grupos: Gastos Acumulativos"}
+                  data={viewMode === 'category' ? catGastosAcumulativos : groupData(catGastosAcumulativos)}
+                  totalType={totalGastos}
+                  monthProgressPercentage={summary.monthProgressPercentage}
+                />
               </div>
             )}
           </div>

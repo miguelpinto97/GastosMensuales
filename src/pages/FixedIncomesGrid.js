@@ -55,7 +55,7 @@ export default function IncomesForm() {
 
                 return {
                     categoryId: cat.id,
-                    categoryName: cat.name,
+                    categoryName: cat.group_name ? `${cat.group_name} - ${cat.name}` : cat.name,
                     categoryColor: cat.color,
                     expenseId: primaryExpenseId,
                     amount: totalAmount,

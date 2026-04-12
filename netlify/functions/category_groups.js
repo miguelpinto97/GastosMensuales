@@ -73,6 +73,14 @@ exports.handler = async (event) => {
           RETURNING *
         `;
         if (result.length === 0) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not Found' }) };
+
+        // Propagar color a categorías hijas
+        await sql`
+          UPDATE categories 
+          SET color = ${color} 
+          WHERE group_id = ${id} AND project_id = ${projectId}
+        `;
+
         return { statusCode: 200, headers, body: JSON.stringify(result[0]) };
       } catch (err) {
         console.error('Error in PUT category_groups:', err);

@@ -63,16 +63,20 @@ exports.handler = async (event) => {
 
       const monthProgressPercentage = (daysPassed / daysInMonth) * 100;
 
-      // Expenses grouped by category with their budget
+      // Expenses grouped by category with their budget and group info
       const byCategoryResult = await sql`
-        SELECT c.id, c.name, c.color, c.type, c.is_single_time, c.budget, SUM(e.amount) as total
+        SELECT 
+          c.id, c.name, c.color, c.type, c.is_single_time, c.budget, 
+          g.id as group_id, g.name as group_name, g.color as group_color,
+          SUM(e.amount) as total
         FROM categories c
+        LEFT JOIN category_groups g ON c.group_id = g.id
         LEFT JOIN expenses e ON c.id = e.category_id 
           AND EXTRACT(YEAR FROM e.date) = ${year} 
           AND EXTRACT(MONTH FROM e.date) = ${month}
           AND e.project_id = ${projectId}
         WHERE c.project_id = ${projectId}
-        GROUP BY c.id, c.name, c.color, c.type, c.is_single_time, c.budget
+        GROUP BY c.id, c.name, c.color, c.type, c.is_single_time, c.budget, g.id, g.name, g.color
         ORDER BY c.type DESC, total DESC
       `;
 

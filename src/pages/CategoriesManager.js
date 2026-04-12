@@ -23,7 +23,14 @@ export default function CategoriesManager() {
   const [showGroupManager, setShowGroupManager] = useState(false);
   const [newGroupId, setNewGroupId] = useState('');
 
+  // Group Editing State
+  const [editingGroupId, setEditingGroupId] = useState(null);
+  const [editGroupForm, setEditGroupForm] = useState({ name: '', color: '' });
+
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [filterType, setFilterType] = useState('all');
+  const [filterGroup, setFilterGroup] = useState('all');
+  const [filterFrequency, setFilterFrequency] = useState('all');
 
   useEffect(() => {
     if (activeProject) {
@@ -81,6 +88,7 @@ export default function CategoriesManager() {
         setNewName('');
         setNewBudget('0');
         setNewGroupId('');
+        setNewColor('#3b82f6'); // Reset to default
         await fetchCategories();
       }
     } catch (err) {
@@ -180,6 +188,41 @@ export default function CategoriesManager() {
     }
   };
 
+  const handleStartEditGroup = (group) => {
+    setEditingGroupId(group.id);
+    setEditGroupForm({ name: group.name, color: group.color });
+  };
+
+  const handleCancelEditGroup = () => {
+    setEditingGroupId(null);
+    setEditGroupForm({ name: '', color: '' });
+  };
+
+  const handleSaveEditGroup = async () => {
+    if (!editGroupForm.name.trim() || !activeProject) return;
+    try {
+      const res = await fetch('/.netlify/functions/category_groups', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          id: editingGroupId,
+          name: editGroupForm.name.trim(),
+          color: editGroupForm.color
+        })
+      });
+      if (res.ok) {
+        await fetchGroups();
+        await fetchCategories(); // Refresh categories to show updated group name/color
+        handleCancelEditGroup();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Error al actualizar el grupo.');
+      }
+    } catch (err) {
+      console.error('Error updating group:', err);
+    }
+  };
+
   const requestSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -188,13 +231,30 @@ export default function CategoriesManager() {
     setSortConfig({ key, direction });
   };
 
-  const getSortedCategories = () => {
-    const sorted = [...categories];
-    return sorted.sort((a, b) => {
+  const getFilteredAndSortedCategories = () => {
+    let filtered = [...categories];
+
+    if (filterType !== 'all') {
+      filtered = filtered.filter(c => c.type === filterType);
+    }
+
+    if (filterGroup !== 'all') {
+      if (filterGroup === 'none') {
+        filtered = filtered.filter(c => !c.group_id);
+      } else {
+        filtered = filtered.filter(c => c.group_id === parseInt(filterGroup));
+      }
+    }
+
+    if (filterFrequency !== 'all') {
+      const isSingle = filterFrequency === 'single';
+      filtered = filtered.filter(c => c.is_single_time === isSingle);
+    }
+
+    return filtered.sort((a, b) => {
       let valA = a[sortConfig.key];
       let valB = b[sortConfig.key];
 
-      // Manejo especial para nombres de grupo
       if (sortConfig.key === 'group_name') {
         valA = a.group_name || '';
         valB = b.group_name || '';
@@ -260,20 +320,72 @@ export default function CategoriesManager() {
           </form>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {groups.map(g => (
-              <div key={g.id} className="bg-white p-3 rounded-lg border border-indigo-100 flex justify-between items-center shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
-                  <span className="font-medium text-slate-700">{g.name}</span>
+            {groups.map(g => {
+              const isEditingGroup = editingGroupId === g.id;
+
+              if (isEditingGroup) {
+                return (
+                  <div key={g.id} className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md flex flex-col gap-2">
+                    <input 
+                      type="text" 
+                      value={editGroupForm.name}
+                      onChange={e => setEditGroupForm({...editGroupForm, name: e.target.value})}
+                      className="w-full px-2 py-1 border border-indigo-200 rounded text-sm outline-none"
+                      autoFocus
+                    />
+                    <div className="flex justify-between items-center">
+                      <input 
+                        type="color" 
+                        value={editGroupForm.color}
+                        onChange={e => setEditGroupForm({...editGroupForm, color: e.target.value})}
+                        className="w-10 h-8 p-0.5 border border-indigo-200 rounded cursor-pointer"
+                      />
+                      <div className="flex gap-1">
+                        <button 
+                          onClick={handleSaveEditGroup}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                          title="Guardar"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={handleCancelEditGroup}
+                          className="p-1.5 text-slate-500 hover:bg-slate-50 rounded transition-colors"
+                          title="Cancelar"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={g.id} className="bg-white p-3 rounded-lg border border-indigo-100 flex justify-between items-center shadow-sm hover:border-indigo-300 transition-colors group/item">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: g.color }} />
+                    <span className="font-medium text-slate-700">{g.name}</span>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <button 
+                      onClick={() => handleStartEditGroup(g)}
+                      className="text-slate-500 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                      title="Editar Grupo"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteGroup(g.id)}
+                      className="text-slate-500 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                      title="Eliminar Grupo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => handleDeleteGroup(g.id)}
-                  className="text-slate-400 hover:text-red-500 p-1 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -310,7 +422,14 @@ export default function CategoriesManager() {
             <label className="block text-xs font-medium text-slate-500 mb-1">Grupo (Opcional)</label>
             <select 
               value={newGroupId}
-              onChange={e => setNewGroupId(e.target.value)}
+              onChange={e => {
+                const gid = e.target.value;
+                setNewGroupId(gid);
+                if (gid) {
+                  const group = groups.find(g => g.id === parseInt(gid));
+                  if (group) setNewColor(group.color);
+                }
+              }}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-white appearance-none h-10 text-sm"
             >
               <option value="">Ninguno</option>
@@ -345,12 +464,19 @@ export default function CategoriesManager() {
 
           <div className="md:col-span-1">
             <label className="block text-sm font-medium text-slate-600 mb-1">Color</label>
-            <input 
-              type="color" 
-              value={newColor}
-              onChange={e => setNewColor(e.target.value)}
-              className="w-full h-10 border border-slate-300 rounded-lg cursor-pointer"
-            />
+            {newGroupId ? (
+              <div className="flex items-center gap-2 h-10 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-500">
+                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: newColor }} />
+                <span>Heredado</span>
+              </div>
+            ) : (
+              <input 
+                type="color" 
+                value={newColor}
+                onChange={e => setNewColor(e.target.value)}
+                className="w-full h-10 border border-slate-300 rounded-lg cursor-pointer"
+              />
+            )}
           </div>
 
           <div className="md:col-span-2 mb-[1px]">
@@ -366,242 +492,314 @@ export default function CategoriesManager() {
         </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {loading ? (
           <div className="p-8 flex justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin" /></div>
-        ) : categories.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">No hay categorías registradas.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
-                  <th 
-                    className="px-6 py-4 w-16 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('color')}
-                  >
-                    <div className="flex items-center gap-1">
-                      Color 
-                      {sortConfig.key === 'color' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('name')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Nombre 
-                      {sortConfig.key === 'name' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('group_name')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Grupo 
-                      {sortConfig.key === 'group_name' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('type')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Tipo 
-                      {sortConfig.key === 'type' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('is_single_time')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Frecuencia 
-                      {sortConfig.key === 'is_single_time' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-4 text-right w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
-                    onClick={() => requestSort('budget')}
-                  >
-                    <div className="flex items-center justify-end gap-2">
-                      Presupuesto 
-                      {sortConfig.key === 'budget' ? (
-                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-right w-32">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getSortedCategories().map(cat => {
-                  const isEditing = editingId === cat.id;
+          <div className="space-y-4">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-slate-400" />
+                <span className="text-sm font-medium text-slate-600">Filtrar por:</span>
+              </div>
+              
+              <select 
+                value={filterType}
+                onChange={e => setFilterType(e.target.value)}
+                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos los Tipos</option>
+                <option value="GASTO">Gastos</option>
+                <option value="INGRESO">Ingresos</option>
+                <option value="AHORRO">Ahorros</option>
+              </select>
 
-                  if (isEditing) {
-                    return (
-                      <tr key={cat.id} className="border-b border-slate-100 bg-blue-50/50 text-sm">
-                        <td className="px-6 py-3">
-                          <input 
-                            type="color" 
-                            value={editForm.color}
-                            onChange={e => setEditForm({...editForm, color: e.target.value})}
-                            className="w-8 h-8 border border-slate-300 rounded cursor-pointer p-0"
-                          />
-                        </td>
-                        <td className="px-6 py-3">
-                          <input 
-                            type="text" 
-                            value={editForm.name}
-                            onChange={e => setEditForm({...editForm, name: e.target.value})}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </td>
-                        <td className="px-6 py-3">
-                          <select 
-                            value={editForm.group_id || ''}
-                            onChange={e => setEditForm({...editForm, group_id: e.target.value || null})}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-xs"
-                          >
-                            <option value="">(Sin Grupo)</option>
-                            {groups.map(g => (
-                              <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-3">
-                          <select 
-                            value={editForm.type}
-                            onChange={e => setEditForm({...editForm, type: e.target.value})}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-sm"
-                          >
-                            <option value="GASTO">Gasto</option>
-                            <option value="INGRESO">Ingreso</option>
-                            <option value="AHORRO">Ahorro</option>
-                          </select>
-                        </td>
-                        <td className="px-6 py-3">
-                          <label className="flex items-center space-x-2 text-xs text-slate-600 cursor-pointer">
+              <select 
+                value={filterGroup}
+                onChange={e => setFilterGroup(e.target.value)}
+                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todas las SuperCategorías</option>
+                <option value="none">Sin Grupo</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+
+              <select 
+                value={filterFrequency}
+                onChange={e => setFilterFrequency(e.target.value)}
+                className="text-sm border border-slate-300 rounded-md px-2 py-1 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todas las Frecuencias</option>
+                <option value="single">Solo una vez (Fijo)</option>
+                <option value="accumulative">Se acumula (Variable)</option>
+              </select>
+
+              {(filterType !== 'all' || filterGroup !== 'all' || filterFrequency !== 'all') && (
+                <button 
+                  onClick={() => { setFilterType('all'); setFilterGroup('all'); setFilterFrequency('all'); }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Limpiar Filtros
+                </button>
+              )}
+              
+              <div className="ml-auto text-xs text-slate-400">
+                {getFilteredAndSortedCategories().length} resultados
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
+                    <th 
+                      className="px-6 py-4 w-16 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('color')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Color 
+                        {sortConfig.key === 'color' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('group_name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Grupo 
+                        {sortConfig.key === 'group_name' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('name')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Nombre 
+                        {sortConfig.key === 'name' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-4 w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('type')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Tipo 
+                        {sortConfig.key === 'type' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('is_single_time')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Frecuencia 
+                        {sortConfig.key === 'is_single_time' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-4 text-right w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                      onClick={() => requestSort('budget')}
+                    >
+                      <div className="flex items-center justify-end gap-2">
+                        Presupuesto 
+                        {sortConfig.key === 'budget' ? (
+                          sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-right w-32">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getFilteredAndSortedCategories().map(cat => {
+                    const isEditing = editingId === cat.id;
+
+                    if (isEditing) {
+                      return (
+                        <tr key={cat.id} className="border-b border-slate-100 bg-blue-50/50 text-sm">
+                          <td className="px-6 py-3">
+                            {editForm.group_id ? (
+                               <div className="w-8 h-8 rounded border border-slate-200 bg-slate-50 flex items-center justify-center" title="Heredado del grupo">
+                                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: editForm.color }} />
+                               </div>
+                            ) : (
+                              <input 
+                                type="color" 
+                                value={editForm.color}
+                                onChange={e => setEditForm({...editForm, color: e.target.value})}
+                                className="w-8 h-8 border border-slate-300 rounded cursor-pointer p-0 shadow-sm"
+                              />
+                            )}
+                          </td>
+                          <td className="px-6 py-3">
+                            <select 
+                              value={editForm.group_id || ''}
+                              onChange={e => {
+                                const gid = e.target.value;
+                                const updates = { group_id: gid || null };
+                                if (gid) {
+                                  const group = groups.find(g => g.id === parseInt(gid));
+                                  if (group) updates.color = group.color;
+                                }
+                                setEditForm({...editForm, ...updates});
+                              }}
+                              className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-xs"
+                            >
+                              <option value="">(Sin Grupo)</option>
+                              {groups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-3">
                             <input 
-                              type="checkbox" 
-                              checked={editForm.is_single_time}
-                              onChange={e => setEditForm({...editForm, is_single_time: e.target.checked})}
-                              className="rounded text-blue-600 focus:ring-blue-500"
+                              type="text" 
+                              value={editForm.name}
+                              onChange={e => setEditForm({...editForm, name: e.target.value})}
+                              className="w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                             />
-                            <span>Una vez</span>
-                          </label>
-                        </td>
-                        <td className="px-6 py-3">
-                          <input 
-                            type="number" 
-                            step="0.01"
-                            value={editForm.budget}
-                            onChange={e => setEditForm({...editForm, budget: e.target.value})}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-right"
-                          />
-                        </td>
-                        <td className="px-6 py-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            <button 
-                              onClick={saveEdit}
-                              className="text-emerald-600 hover:bg-emerald-100 p-1.5 rounded transition-colors"
-                              title="Guardar"
+                          </td>
+                          <td className="px-6 py-3">
+                            <select 
+                              value={editForm.type}
+                              onChange={e => setEditForm({...editForm, type: e.target.value})}
+                              className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-sm"
                             >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={cancelEdit}
-                              className="text-slate-500 hover:bg-slate-200 p-1.5 rounded transition-colors"
-                              title="Cancelar"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                              <option value="GASTO">Gasto</option>
+                              <option value="INGRESO">Ingreso</option>
+                              <option value="AHORRO">Ahorro</option>
+                            </select>
+                          </td>
+                          <td className="px-6 py-3">
+                            <label className="flex items-center space-x-2 text-xs text-slate-600 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={editForm.is_single_time}
+                                onChange={e => setEditForm({...editForm, is_single_time: e.target.checked})}
+                                className="rounded text-blue-600 focus:ring-blue-500"
+                              />
+                              <span>Una vez</span>
+                            </label>
+                          </td>
+                          <td className="px-6 py-3">
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={editForm.budget}
+                              onChange={e => setEditForm({...editForm, budget: e.target.value})}
+                              className="w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none text-right"
+                            />
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <div className="flex justify-end gap-1">
+                              <button 
+                                onClick={saveEdit}
+                                className="text-emerald-600 hover:bg-emerald-100 p-1.5 rounded transition-colors"
+                                title="Guardar"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={cancelEdit}
+                                className="text-slate-500 hover:bg-slate-200 p-1.5 rounded transition-colors"
+                                title="Cancelar"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return (
+                      <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm group">
+                        <td className="px-6 py-4">
+                          <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: cat.color }}></div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {cat.group_id ? (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium" 
+                                 style={{ backgroundColor: `${cat.group_color}15`, color: cat.group_color }}>
+                              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.group_color }} />
+                              {cat.group_name}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Sin grupo</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-slate-800">{cat.name}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-1">
+                            {getTypeIcon(cat.type)}
+                            <span className="capitalize">{cat.type?.toLowerCase() || 'Gasto'}</span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500">
+                          {cat.is_single_time ? 'Una vez (Fijo)' : 'Se acumula (Variable)'}
+                        </td>
+                        <td className="px-6 py-4 text-right font-medium text-slate-600">
+                          S/ {parseFloat(cat.budget || 0).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {isOwner(cat.created_by) ? (
+                            <div className="flex justify-end gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => startEdit(cat)}
+                                className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                title="Editar"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(cat.id)}
+                                className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">Solo Vista</span>
+                          )}
                         </td>
                       </tr>
-                    )
-                  }
-
-                  // Vista normal (Sólo lectura)
-                  return (
-                    <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm group">
-                      <td className="px-6 py-4">
-                        <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: cat.color }}></div>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-800">{cat.name}</td>
-                      <td className="px-6 py-4">
-                        {cat.group_id ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium" 
-                               style={{ backgroundColor: `${cat.group_color}15`, color: cat.group_color }}>
-                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.group_color }} />
-                            {cat.group_name}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Sin grupo</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-1">
-                          {getTypeIcon(cat.type)}
-                          <span className="capitalize">{cat.type?.toLowerCase() || 'Gasto'}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">
-                        {cat.is_single_time ? 'Una vez (Fijo)' : 'Se acumula (Variable)'}
-                      </td>
-                      <td className="px-6 py-4 text-right font-medium text-slate-600">
-                        S/ {parseFloat(cat.budget || 0).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {isOwner(cat.created_by) ? (
-                          <div className="flex justify-end gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => startEdit(cat)}
-                              className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                              title="Editar"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(cat.id)}
-                              className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">Solo Vista</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            {getFilteredAndSortedCategories().length === 0 && (
+              <div className="p-12 text-center text-slate-500 border-t border-slate-100">
+                No se encontraron categorías con los filtros seleccionados.
+              </div>
+            )}
           </div>
         )}
       </div>

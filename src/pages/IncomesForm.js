@@ -240,7 +240,7 @@ export default function IncomesForm() {
                 })
                 .map(c => ({
                   id: c.id,
-                  name: c.name,
+                  name: c.group_name ? `${c.group_name} - ${c.name}` : c.name,
                   color: c.color
                 }))
               }
@@ -386,7 +386,7 @@ export default function IncomesForm() {
                           color: item.category_color || '#475569'
                         }}
                       >
-                        {item.category_name || 'Sin categoría'}
+                        {item.group_name ? `${item.group_name} - ${item.category_name}` : (item.category_name || 'Sin categoría')}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">
@@ -441,7 +441,7 @@ export default function IncomesForm() {
                       color: item.category_color || '#475569'
                     }}
                   >
-                    {item.category_name || 'Sin categoría'}
+                    {item.group_name ? `${item.group_name} - ${item.category_name}` : (item.category_name || 'Sin categoría')}
                   </span>
                   
                   <div className="flex items-center gap-3">

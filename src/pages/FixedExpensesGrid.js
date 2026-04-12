@@ -61,12 +61,12 @@ export default function ExpensesForm() {
 
                 return {
                     categoryId: cat.id,
-                    categoryName: cat.name,
+                    categoryName: cat.group_name ? `${cat.group_name} - ${cat.name}` : cat.name,
                     categoryColor: cat.color,
                     expenseId: primaryExpenseId,
                     amount: totalAmount,
                     concept: concept,
-                    originalAmount: totalAmount, // Para rastrear si cambió y evitar requests innecesarios
+                    originalAmount: totalAmount,
                     originalConcept: concept
                 };
             });
