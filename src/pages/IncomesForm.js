@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import Select from 'react-select';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SnapCarousel from '../components/SnapCarousel';
 
 export default function IncomesForm() {
   const { activeProject, getAuthHeaders, isOwner } = useAuth();
@@ -18,7 +18,7 @@ export default function IncomesForm() {
   });
 
   const [groups, setGroups] = useState([]);
-  const [filterGroupId, setFilterGroupId] = useState('all');
+  const [filterGroupId, setFilterGroupId] = useState('none');
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const [filterMonth, setFilterMonth] = useState(currentMonth);
@@ -215,46 +215,38 @@ export default function IncomesForm() {
               />
             </div>
           </div>
-          <div className="col-span-12 md:col-span-4">
+          <div className="col-span-12">
             <label className="block text-sm font-medium text-emerald-700 mb-1">SuperCategoría (Filtro)</label>
-            <Select
-              options={[
-                { value: 'all', label: 'Todas las SuperCategorías' },
-                ...groups.map(g => ({ value: g.id, label: g.name }))
+            <SnapCarousel 
+              items={[
+                { id: 'none', name: 'Sin Grupo', color: '#cbd5e1' }, 
+                ...groups
               ]}
-              value={
-                filterGroupId === 'all' 
-                  ? { value: 'all', label: 'Todas las SuperCategorías' }
-                  : groups.map(g => ({ value: g.id, label: g.name })).find(o => o.value === filterGroupId) || null
-              }
-              onChange={(option) => {
-                setFilterGroupId(option?.value || 'all');
+              activeId={filterGroupId}
+              onChange={(id) => {
+                setFilterGroupId(id);
                 setForm(prev => ({ ...prev, category_id: '' }));
               }}
-              placeholder="Filtrar por grupo..."
-              className="mb-1"
+              themeColor="emerald"
             />
           </div>
-          <div className="col-span-12 md:col-span-4">
+          <div className="col-span-12">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Categoría</label>
-            <Select
-              options={categories
-                .filter(c => filterGroupId === 'all' || c.group_id === filterGroupId)
+            <SnapCarousel 
+              items={categories
+                .filter(c => {
+                  if (filterGroupId === 'none') return c.group_id === null || c.group_id === undefined;
+                  return c.group_id === filterGroupId;
+                })
                 .map(c => ({
-                  value: c.id,
-                  label: c.name
-                }))}
-              value={
-                categories
-                  .map(c => ({ value: c.id, label: c.name }))
-                  .find(o => o.value === form.category_id) || null
+                  id: c.id,
+                  name: c.name,
+                  color: c.color
+                }))
               }
-              onChange={(option) =>
-                setForm({ ...form, category_id: option?.value || null })
-              }
-              placeholder="Selecciona categoría..."
-              isClearable
-              className=""
+              activeId={form.category_id}
+              onChange={(id) => setForm({ ...form, category_id: id })}
+              themeColor="emerald"
             />
           </div>
           <div className="col-span-12">
@@ -397,7 +389,9 @@ export default function IncomesForm() {
                         {item.category_name || 'Sin categoría'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-800">{item.concept}</td>
+                    <td className="px-6 py-4 font-medium text-slate-800">
+                      {item.concept || (item.group_name ? `${item.group_name} - ${item.category_name}` : item.category_name)}
+                    </td>
                     <td className="px-6 py-4 text-right font-medium text-emerald-600">
                       S/ {parseFloat(item.amount).toFixed(2)}
                     </td>
@@ -435,7 +429,9 @@ export default function IncomesForm() {
                   <div className="text-sm font-bold text-emerald-600">S/ {parseFloat(item.amount).toFixed(2)}</div>
                 </div>
                 
-                <div className="text-sm font-semibold text-slate-800 mb-2">{item.concept}</div>
+                <div className="text-sm font-semibold text-slate-800 mb-2">
+                  {item.concept || (item.group_name ? `${item.group_name} - ${item.category_name}` : item.category_name)}
+                </div>
                 
                 <div className="flex justify-between items-center">
                   <span

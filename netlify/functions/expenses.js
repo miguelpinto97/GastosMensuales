@@ -6,8 +6,8 @@ exports.handler = async (event) => {
     const sql = getDb();
     const headers = { 
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE'
+      'Access-Control-Allow-Headers': 'Content-Type, x-project-id, X-Project-Id, Authorization',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
     };
 
     if (event.httpMethod === 'OPTIONS') {
@@ -33,17 +33,27 @@ exports.handler = async (event) => {
       if (month) {
         const [year, m] = month.split('-');
         result = await sql`
-          SELECT e.*, c.name as category_name, c.color as category_color, c.type as category_type 
+          SELECT e.*, 
+                 c.name as category_name, 
+                 c.color as category_color, 
+                 c.type as category_type,
+                 cg.name as group_name
           FROM expenses e
           LEFT JOIN categories c ON e.category_id = c.id
+          LEFT JOIN category_groups cg ON c.group_id = cg.id
           WHERE EXTRACT(YEAR FROM e.date) = ${year} AND EXTRACT(MONTH FROM e.date) = ${m} AND e.project_id = ${projectId}
           ORDER BY e.date DESC
         `;
       } else {
         result = await sql`
-          SELECT e.*, c.name as category_name, c.color as category_color, c.type as category_type 
+          SELECT e.*, 
+                 c.name as category_name, 
+                 c.color as category_color, 
+                 c.type as category_type,
+                 cg.name as group_name
           FROM expenses e
           LEFT JOIN categories c ON e.category_id = c.id
+          LEFT JOIN category_groups cg ON c.group_id = cg.id
           WHERE e.project_id = ${projectId}
           ORDER BY e.date DESC LIMIT 100
         `;
@@ -75,14 +85,20 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Amount are required' }) };
       }
 
-      // Validar propiedad del registro
+      // Verificar membresía
+      const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+      if (membership.length === 0) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+      }
+
+      // Validar propiedad del registro dentro del proyecto
       const result = await sql`
         UPDATE expenses 
         SET amount = ${amount}, 
             concept = COALESCE(${concept}, concept), 
             category_id = COALESCE(${category_id}, category_id), 
             date = COALESCE(${date}, date)
-        WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId}
+        WHERE id = ${id} AND project_id = ${projectId}
         RETURNING *
       `;
 
@@ -97,9 +113,15 @@ exports.handler = async (event) => {
       const id = event.queryStringParameters.id;
       if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID is required' }) };
 
-      const result = await sql`DELETE FROM expenses WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId} RETURNING *`;
+      // Verificar membresía
+      const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+      if (membership.length === 0) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+      }
+
+      const result = await sql`DELETE FROM expenses WHERE id = ${id} AND project_id = ${projectId} RETURNING *`;
       if (result.length === 0) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied or Expense not found' }) };
+        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Expense not found' }) };
       }
 
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Deleted successfully' }) };

@@ -6,8 +6,8 @@ exports.handler = async (event) => {
     const sql = getDb();
     const headers = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE'
+      'Access-Control-Allow-Headers': 'Content-Type, x-project-id, X-Project-Id, Authorization',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
     };
 
     if (event.httpMethod === 'OPTIONS') {
@@ -66,53 +66,80 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'POST') {
-      const data = JSON.parse(event.body);
-      const { name, color, type, is_single_time, budget, group_id } = data;
+      try {
+        const data = JSON.parse(event.body);
+        const { name, color, type, is_single_time, budget, group_id } = data;
 
-      if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
+        if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
 
-      const result = await sql`
-        INSERT INTO categories (name, color, type, is_single_time, budget, group_id, project_id, created_by) 
-        VALUES (${name}, ${color || '#000000'}, ${type || 'GASTO'}, ${is_single_time || false}, ${budget || 0}, ${group_id || null}, ${projectId}, ${userId}) 
-        RETURNING *
-      `;
-      return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
+        const result = await sql`
+          INSERT INTO categories (name, color, type, is_single_time, budget, group_id, project_id, created_by) 
+          VALUES (${name}, ${color || '#000000'}, ${type || 'GASTO'}, ${is_single_time || false}, ${budget || 0}, ${group_id || null}, ${projectId}, ${userId}) 
+          RETURNING *
+        `;
+        return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
+      } catch (err) {
+        console.error('Error in POST categories:', err);
+        if (err.code === '23505') {
+          return { statusCode: 409, headers, body: JSON.stringify({ error: 'Ya existe una categoría con ese nombre en este proyecto.' }) };
+        }
+        throw err;
+      }
     }
 
     if (event.httpMethod === 'PUT') {
-      const data = JSON.parse(event.body);
-      const { id, name, color, type, is_single_time, budget, group_id } = data;
+      try {
+        const data = JSON.parse(event.body);
+        const { id, name, color, type, is_single_time, budget, group_id } = data;
 
-      if (!id || !name) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
+        if (!id || !name) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
+        }
+
+        // Verificar que el usuario sea miembro del proyecto (Case-Insensitive)
+        const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+        if (membership.length === 0) {
+          return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+        }
+
+        const result = await sql`
+          UPDATE categories 
+          SET name = ${name}, 
+              color = ${color},
+              type = ${type},
+              is_single_time = ${is_single_time},
+              budget = ${budget},
+              group_id = ${group_id || null}
+          WHERE id = ${id} AND project_id = ${projectId}
+          RETURNING *
+        `;
+
+        if (result.length === 0) {
+          return { statusCode: 404, headers, body: JSON.stringify({ error: 'Category not found or project mismatch' }) };
+        }
+        return { statusCode: 200, headers, body: JSON.stringify(result[0]) };
+      } catch (err) {
+        console.error('Error in PUT categories:', err);
+        if (err.code === '23505') { // Unique violation
+          return { statusCode: 409, headers, body: JSON.stringify({ error: 'Ya existe una categoría con ese nombre en este proyecto.' }) };
+        }
+        throw err; // Re-throw to be caught by the outer catch
       }
-
-      const found = await sql`SELECT id FROM categories WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId}`;
-      if (found.length === 0) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied or Category not found' }) };
-      }
-
-      const result = await sql`
-        UPDATE categories 
-        SET name = ${name}, 
-            color = ${color},
-            type = ${type},
-            is_single_time = ${is_single_time},
-            budget = ${budget},
-            group_id = ${group_id || null}
-        WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId}
-        RETURNING *
-      `;
-      return { statusCode: 200, headers, body: JSON.stringify(result[0]) };
     }
 
     if (event.httpMethod === 'DELETE') {
       const id = event.queryStringParameters.id;
       if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID is required' }) };
 
-      const result = await sql`DELETE FROM categories WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId} RETURNING *`;
+      // Verificar membresía
+      const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+      if (membership.length === 0) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+      }
+
+      const result = await sql`DELETE FROM categories WHERE id = ${id} AND project_id = ${projectId} RETURNING *`;
       if (result.length === 0) {
-        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied or Category not found' }) };
+        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Category not found' }) };
       }
 
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Deleted successfully' }) };

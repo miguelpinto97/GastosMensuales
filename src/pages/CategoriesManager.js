@@ -138,7 +138,8 @@ export default function CategoriesManager() {
         await fetchCategories();
         cancelEdit();
       } else {
-         alert('No tienes permiso para editar este registro.');
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'No tienes permiso para editar este registro o ocurrió un error.');
       }
     } catch (err) {
       console.error('Error updating category:', err);

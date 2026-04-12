@@ -6,7 +6,7 @@ exports.handler = async (event) => {
     const sql = getDb();
     const headers = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, x-project-id, X-Project-Id',
+      'Access-Control-Allow-Headers': 'Content-Type, x-project-id, X-Project-Id, Authorization',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
     };
 
@@ -36,41 +36,69 @@ exports.handler = async (event) => {
     }
 
     if (event.httpMethod === 'POST') {
-      const { name, color } = JSON.parse(event.body);
-      if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
+      try {
+        const { name, color } = JSON.parse(event.body);
+        if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
 
-      const result = await sql`
-        INSERT INTO category_groups (name, color, project_id, created_by) 
-        VALUES (${name}, ${color || '#3b82f6'}, ${projectId}, ${userId}) 
-        RETURNING *
-      `;
-      return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
+        const result = await sql`
+          INSERT INTO category_groups (name, color, project_id, created_by) 
+          VALUES (${name}, ${color || '#3b82f6'}, ${projectId}, ${userId}) 
+          RETURNING *
+        `;
+        return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
+      } catch (err) {
+        console.error('Error in POST category_groups:', err);
+        if (err.code === '23505') {
+          return { statusCode: 409, headers, body: JSON.stringify({ error: 'Ya existe una supercategoría con ese nombre en este proyecto.' }) };
+        }
+        throw err;
+      }
     }
 
     if (event.httpMethod === 'PUT') {
-      const { id, name, color } = JSON.parse(event.body);
-      if (!id || !name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
+      try {
+        const { id, name, color } = JSON.parse(event.body);
+        if (!id || !name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
 
-      const result = await sql`
-        UPDATE category_groups 
-        SET name = ${name}, color = ${color} 
-        WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId}
-        RETURNING *
-      `;
-      if (result.length === 0) return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden or Not Found' }) };
-      return { statusCode: 200, headers, body: JSON.stringify(result[0]) };
+        // Verificar membresía (Case-Insensitive)
+        const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+        if (membership.length === 0) {
+          return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+        }
+
+        const result = await sql`
+          UPDATE category_groups 
+          SET name = ${name}, color = ${color} 
+          WHERE id = ${id} AND project_id = ${projectId}
+          RETURNING *
+        `;
+        if (result.length === 0) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not Found' }) };
+        return { statusCode: 200, headers, body: JSON.stringify(result[0]) };
+      } catch (err) {
+        console.error('Error in PUT category_groups:', err);
+        if (err.code === '23505') {
+          return { statusCode: 409, headers, body: JSON.stringify({ error: 'Ya existe una supercategoría con ese nombre en este proyecto.' }) };
+        }
+        throw err;
+      }
     }
 
     if (event.httpMethod === 'DELETE') {
       const id = event.queryStringParameters.id;
       if (!id) return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID is required' }) };
 
+      // Verificar membresía
+      const membership = await sql`SELECT 1 FROM user_projects WHERE LOWER(username) = LOWER(${userId}) AND project_id = ${projectId}`;
+      if (membership.length === 0) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: 'Permission denied. Not a project member.' }) };
+      }
+
       const result = await sql`
         DELETE FROM category_groups 
-        WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId} 
+        WHERE id = ${id} AND project_id = ${projectId} 
         RETURNING *
       `;
-      if (result.length === 0) return { statusCode: 403, headers, body: JSON.stringify({ error: 'Forbidden or Not Found' }) };
+      if (result.length === 0) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Not Found' }) };
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Deleted' }) };
     }
 

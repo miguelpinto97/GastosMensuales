@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Netlify Dev (Debug Backend)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/netlify-cli/bin/run.js",
+      "args": ["dev"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "outFiles": ["${workspaceFolder}/.netlify/functions-serve/**/*.js"],
+      "env": {
+        "BROWSER": "none"
+      }
+    },
+    {
+      "name": "Debug Frontend (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8888",
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack Debug",
+      "configurations": ["Netlify Dev (Debug Backend)", "Debug Frontend (Chrome)"]
+    }
+  ]
+}
