@@ -55,8 +55,8 @@ exports.handler = async (event) => {
       const data = JSON.parse(event.body);
       const { amount, concept, category_id, date } = data;
       
-      if (!amount || !concept || !date) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields' }) };
+      if (!amount || !date) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields (amount, date)' }) };
       }
 
       const result = await sql`

@@ -50,12 +50,13 @@ exports.handler = async (event) => {
       }
 
       const result = await sql`
-    SELECT *
-    FROM categories
-    WHERE project_id = ${projectId}
-    ${filter}
-    ORDER BY name ASC
-  `;
+        SELECT c.*, cg.name as group_name, cg.color as group_color
+        FROM categories c
+        LEFT JOIN category_groups cg ON c.group_id = cg.id
+        WHERE c.project_id = ${projectId}
+        ${filter}
+        ORDER BY c.name ASC
+      `;
 
       return {
         statusCode: 200,
@@ -66,17 +67,13 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'POST') {
       const data = JSON.parse(event.body);
-      const name = data.name;
-      const color = data.color || '#000000';
-      const type = data.type || 'GASTO';
-      const is_single_time = data.is_single_time !== undefined ? data.is_single_time : false;
-      const budget = data.budget || 0;
+      const { name, color, type, is_single_time, budget, group_id } = data;
 
       if (!name) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name is required' }) };
 
       const result = await sql`
-        INSERT INTO categories (name, color, type, is_single_time, budget, project_id, created_by) 
-        VALUES (${name}, ${color}, ${type}, ${is_single_time}, ${budget}, ${projectId}, ${userId}) 
+        INSERT INTO categories (name, color, type, is_single_time, budget, group_id, project_id, created_by) 
+        VALUES (${name}, ${color || '#000000'}, ${type || 'GASTO'}, ${is_single_time || false}, ${budget || 0}, ${group_id || null}, ${projectId}, ${userId}) 
         RETURNING *
       `;
       return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
@@ -84,7 +81,7 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'PUT') {
       const data = JSON.parse(event.body);
-      const { id, name, color, type, is_single_time, budget } = data;
+      const { id, name, color, type, is_single_time, budget, group_id } = data;
 
       if (!id || !name) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Name are required' }) };
@@ -101,7 +98,8 @@ exports.handler = async (event) => {
             color = ${color},
             type = ${type},
             is_single_time = ${is_single_time},
-            budget = ${budget}
+            budget = ${budget},
+            group_id = ${group_id || null}
         WHERE id = ${id} AND project_id = ${projectId} AND created_by = ${userId}
         RETURNING *
       `;

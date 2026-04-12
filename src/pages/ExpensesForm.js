@@ -17,6 +17,9 @@ export default function ExpensesForm() {
     date: new Date().toISOString().split('T')[0]
   });
 
+  const [groups, setGroups] = useState([]);
+  const [filterGroupId, setFilterGroupId] = useState('all');
+
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const [filterMonth, setFilterMonth] = useState(currentMonth);
 
@@ -27,8 +30,21 @@ export default function ExpensesForm() {
   useEffect(() => {
     if (activeProject) {
       fetchCategories();
+      fetchGroups();
     }
   }, [activeProject]);
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/category_groups', {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      setGroups(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching groups:', err);
+    }
+  };
 
   useEffect(() => {
     if (activeProject) {
@@ -45,9 +61,6 @@ export default function ExpensesForm() {
       const data = await res.json();
       const expenseCategories = Array.isArray(data) ? data.filter(c => c.type !== 'INGRESO') : [];
       setCategories(expenseCategories);
-      if (expenseCategories.length > 0) {
-        setForm(prev => ({ ...prev, category_id: expenseCategories[0].id }));
-      }
     } catch (err) {
       console.error('Error fetching categories:', err);
     }
@@ -77,7 +90,7 @@ export default function ExpensesForm() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!form.amount || !form.concept || !form.date || !activeProject) return;
+    if (!form.amount || !form.date || !activeProject) return;
 
     setSubmitting(true);
     try {
@@ -345,23 +358,34 @@ export default function ExpensesForm() {
             </div>
           </div>
           <div className="col-span-12 md:col-span-4">
-            <label className="block text-sm font-medium text-slate-600 mb-1">Concepto</label>
-            <input
-              type="text"
-              value={form.concept}
-              onChange={e => setForm({ ...form, concept: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Ej. Almuerzo, Gasolina, Supermercado..."
-              required
+            <label className="block text-sm font-medium text-slate-600 mb-1">SuperCategoría (Filtro)</label>
+            <Select
+              options={[
+                { value: 'all', label: 'Todas las SuperCategorías' },
+                ...groups.map(g => ({ value: g.id, label: g.name }))
+              ]}
+              value={
+                filterGroupId === 'all' 
+                  ? { value: 'all', label: 'Todas las SuperCategorías' }
+                  : groups.map(g => ({ value: g.id, label: g.name })).find(o => o.value === filterGroupId) || null
+              }
+              onChange={(option) => {
+                setFilterGroupId(option?.value || 'all');
+                setForm(prev => ({ ...prev, category_id: '' }));
+              }}
+              placeholder="Filtrar por grupo..."
+              className="mb-1"
             />
           </div>
           <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-slate-600 mb-1">Categoría</label>
             <Select
-              options={categories.map(c => ({
-                value: c.id,
-                label: c.name
-              }))}
+              options={categories
+                .filter(c => filterGroupId === 'all' || c.group_id === filterGroupId)
+                .map(c => ({
+                  value: c.id,
+                  label: c.name
+                }))}
               value={
                 categories
                   .map(c => ({ value: c.id, label: c.name }))
@@ -374,13 +398,22 @@ export default function ExpensesForm() {
               isClearable
               className=""
             />
-
+          </div>
+          <div className="col-span-12">
+            <label className="block text-sm font-medium text-slate-600 mb-1">Concepto <span className="text-slate-400 font-normal">(Opcional)</span></label>
+            <input
+              type="text"
+              value={form.concept}
+              onChange={e => setForm({ ...form, concept: e.target.value })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Ej. Almuerzo, Gasolina, Supermercado..."
+            />
           </div>
         </form>
         <div className="mt-4 flex justify-end">
           <button
             onClick={handleAddExpense}
-            disabled={submitting || !form.amount || !form.concept || !activeProject}
+            disabled={submitting || !form.amount || !activeProject}
             className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}

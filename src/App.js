@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LineChart, Receipt, Tags, Wallet, FolderOpen, User, PlusCircle, Share2, Loader2, X, Check, Settings, Trash2, LogOut, LayoutGrid } from 'lucide-react';
+import { LineChart, Receipt, Tags, Wallet, FolderOpen, User, PlusCircle, Share2, Loader2, X, Check, Settings, Trash2, LogOut, LayoutGrid, Target } from 'lucide-react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import Dashboard from './pages/Dashboard';
@@ -9,6 +9,7 @@ import FixedExpensesGrid from './pages/FixedExpensesGrid';
 import IncomesForm from './pages/IncomesForm';
 import FixedIncomesGrid from './pages/FixedIncomesGrid';
 import CategoriesManager from './pages/CategoriesManager';
+import CategoryGroupsManager from './pages/CategoryGroupsManager';
 import Landing from './pages/Landing';
 import CompleteProfile from './pages/CompleteProfile';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -72,6 +73,7 @@ function Navigation({ isOpen, setIsOpen, onLogoutClick }) {
     { path: '/expenses', label: 'Gastos', icon: Receipt },
     { path: '/fixed-expenses', label: 'Gastos Fijos', icon: LayoutGrid },
     { path: '/categories', label: 'Categorías', icon: Tags },
+    { path: '/groups', label: 'SuperCategorías', icon: Target },
   ];
 
   return (
@@ -347,6 +349,7 @@ function MainApp() {
             <Route path="/expenses" element={<ExpensesForm />} />
             <Route path="/fixed-expenses" element={<FixedExpensesGrid />} />
             <Route path="/categories" element={<CategoriesManager />} />
+            <Route path="/groups" element={<CategoryGroupsManager />} />
           </Routes>
         </main>
 

@@ -116,7 +116,7 @@ export default function IncomesForm() {
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         amount: currentAmount,
-                        concept: row.concept || row.categoryName,
+                        concept: row.concept,
                         category_id: row.categoryId,
                         date: `${filterMonth}-01`
                     })

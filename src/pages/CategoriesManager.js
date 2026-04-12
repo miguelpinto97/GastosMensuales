@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, ArrowUpCircle, ArrowDownCircle, Info, PiggyBank, Edit2, X, Check } from 'lucide-react';
+import { Plus, Trash2, Loader2, ArrowUpCircle, ArrowDownCircle, Info, PiggyBank, Edit2, X, Check, Target, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function CategoriesManager() {
@@ -17,11 +17,32 @@ export default function CategoriesManager() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
 
+  const [groups, setGroups] = useState([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupColor, setNewGroupColor] = useState('#3b82f6');
+  const [showGroupManager, setShowGroupManager] = useState(false);
+  const [newGroupId, setNewGroupId] = useState('');
+
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
   useEffect(() => {
     if (activeProject) {
       fetchCategories();
+      fetchGroups();
     }
   }, [activeProject]);
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/category_groups', {
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      setGroups(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching groups:', err);
+    }
+  };
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -52,12 +73,14 @@ export default function CategoriesManager() {
           color: newColor,
           type: newType,
           is_single_time: newIsSingleTime,
-          budget: parseFloat(newBudget) || 0
+          budget: parseFloat(newBudget) || 0,
+          group_id: newGroupId || null
         })
       });
       if (res.ok) {
         setNewName('');
         setNewBudget('0');
+        setNewGroupId('');
         await fetchCategories();
       }
     } catch (err) {
@@ -107,7 +130,8 @@ export default function CategoriesManager() {
           color: editForm.color,
           type: editForm.type,
           is_single_time: editForm.is_single_time,
-          budget: parseFloat(editForm.budget) || 0
+          budget: parseFloat(editForm.budget) || 0,
+          group_id: editForm.group_id || null
         })
       });
       if (res.ok) {
@@ -119,6 +143,66 @@ export default function CategoriesManager() {
     } catch (err) {
       console.error('Error updating category:', err);
     }
+  };
+
+  const handleAddGroup = async (e) => {
+    e.preventDefault();
+    if (!newGroupName.trim() || !activeProject) return;
+    try {
+      const res = await fetch('/.netlify/functions/category_groups', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name: newGroupName.trim(), color: newGroupColor })
+      });
+      if (res.ok) {
+        setNewGroupName('');
+        fetchGroups();
+      }
+    } catch (err) {
+      console.error('Error adding group:', err);
+    }
+  };
+
+  const handleDeleteGroup = async (id) => {
+    if (!window.confirm('¿Eliminar este grupo? Las categorías asociadas quedarán sin grupo.')) return;
+    try {
+      const res = await fetch(`/.netlify/functions/category_groups?id=${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        fetchGroups();
+        fetchCategories(); // To refresh category list which might have had this group
+      }
+    } catch (err) {
+      console.error('Error deleting group:', err);
+    }
+  };
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedCategories = () => {
+    const sorted = [...categories];
+    return sorted.sort((a, b) => {
+      let valA = a[sortConfig.key];
+      let valB = b[sortConfig.key];
+
+      // Manejo especial para nombres de grupo
+      if (sortConfig.key === 'group_name') {
+        valA = a.group_name || '';
+        valB = b.group_name || '';
+      }
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
   };
 
   const getTypeIcon = (type) => {
@@ -134,13 +218,70 @@ export default function CategoriesManager() {
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-slate-800">Categorías y Presupuestos</h1>
+        <button 
+          onClick={() => setShowGroupManager(!showGroupManager)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+            showGroupManager ? 'bg-slate-200 text-slate-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+          }`}
+        >
+          <Edit2 className="w-4 h-4" />
+          {showGroupManager ? 'Cerrar Grupos' : 'Gestionar Grupos'}
+        </button>
       </div>
+
+      {showGroupManager && (
+        <div className="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2 duration-200">
+          <h2 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5" /> Grupos de Categorías (SuperCategorías)
+          </h2>
+          
+          <form onSubmit={handleAddGroup} className="flex flex-wrap gap-3 mb-6">
+            <input 
+              type="text" 
+              value={newGroupName}
+              onChange={e => setNewGroupName(e.target.value)}
+              placeholder="Nuevo nombre de grupo..."
+              className="flex-1 min-w-[200px] px-4 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <input 
+              type="color" 
+              value={newGroupColor}
+              onChange={e => setNewGroupColor(e.target.value)}
+              className="w-12 h-10 p-1 bg-white border border-indigo-200 rounded-lg cursor-pointer"
+            />
+            <button 
+              type="submit"
+              disabled={!newGroupName.trim()}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" /> Crear Grupo
+            </button>
+          </form>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {groups.map(g => (
+              <div key={g.id} className="bg-white p-3 rounded-lg border border-indigo-100 flex justify-between items-center shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
+                  <span className="font-medium text-slate-700">{g.name}</span>
+                </div>
+                <button 
+                  onClick={() => handleDeleteGroup(g.id)}
+                  className="text-slate-400 hover:text-red-500 p-1 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <h2 className="text-lg font-semibold text-slate-700 mb-4">Añadir Nuevo Concepto</h2>
-        <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-          <div className="md:col-span-3">
-            <label className="block text-sm font-medium text-slate-600 mb-1">Nombre</label>
+        <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end text-sm">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
             <input 
               type="text" 
               value={newName}
@@ -165,7 +306,21 @@ export default function CategoriesManager() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-600 mb-1">Presupuesto</label>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Grupo (Opcional)</label>
+            <select 
+              value={newGroupId}
+              onChange={e => setNewGroupId(e.target.value)}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-white appearance-none h-10 text-sm"
+            >
+              <option value="">Ninguno</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-slate-500 mb-1">Presupuesto</label>
             <input 
               type="number" 
               step="0.01"
@@ -220,16 +375,89 @@ export default function CategoriesManager() {
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm">
-                  <th className="px-6 py-4 w-16">Color</th>
-                  <th className="px-6 py-4">Nombre</th>
-                  <th className="px-6 py-4 w-32">Tipo</th>
-                  <th className="px-6 py-4 w-40">Frecuencia</th>
-                  <th className="px-6 py-4 text-right w-32">Presupuesto</th>
+                  <th 
+                    className="px-6 py-4 w-16 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('color')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Color 
+                      {sortConfig.key === 'color' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-0 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('name')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Nombre 
+                      {sortConfig.key === 'name' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('group_name')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Grupo 
+                      {sortConfig.key === 'group_name' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('type')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Tipo 
+                      {sortConfig.key === 'type' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 w-40 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('is_single_time')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Frecuencia 
+                      {sortConfig.key === 'is_single_time' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-right w-32 cursor-pointer hover:bg-slate-100 transition-colors group/head"
+                    onClick={() => requestSort('budget')}
+                  >
+                    <div className="flex items-center justify-end gap-2">
+                      Presupuesto 
+                      {sortConfig.key === 'budget' ? (
+                        sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-10 group-hover/head:opacity-40 transition-opacity" />
+                      )}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-right w-32">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {categories.map(cat => {
+                {getSortedCategories().map(cat => {
                   const isEditing = editingId === cat.id;
 
                   if (isEditing) {
@@ -250,6 +478,18 @@ export default function CategoriesManager() {
                             onChange={e => setEditForm({...editForm, name: e.target.value})}
                             className="w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none"
                           />
+                        </td>
+                        <td className="px-6 py-3">
+                          <select 
+                            value={editForm.group_id || ''}
+                            onChange={e => setEditForm({...editForm, group_id: e.target.value || null})}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded bg-white text-xs"
+                          >
+                            <option value="">(Sin Grupo)</option>
+                            {groups.map(g => (
+                              <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                          </select>
                         </td>
                         <td className="px-6 py-3">
                           <select 
@@ -311,6 +551,17 @@ export default function CategoriesManager() {
                         <div className="w-6 h-6 rounded-full shadow-sm" style={{ backgroundColor: cat.color }}></div>
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-800">{cat.name}</td>
+                      <td className="px-6 py-4">
+                        {cat.group_id ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium" 
+                               style={{ backgroundColor: `${cat.group_color}15`, color: cat.group_color }}>
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cat.group_color }} />
+                            {cat.group_name}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Sin grupo</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-1">
                           {getTypeIcon(cat.type)}

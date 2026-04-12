@@ -12,6 +12,7 @@ export default function Dashboard() {
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [filterMonth, setFilterMonth] = useState(currentMonth);
+  const [viewMode, setViewMode] = useState('category'); // 'category' o 'group'
 
   useEffect(() => {
     if (activeProject) {
@@ -48,9 +49,35 @@ export default function Dashboard() {
 
   const balanceNeto = totalIngresos - totalGastos - totalAhorro;
 
-  // Filtrar categorías (Sólo Gastos)
-  const catGastosFijos = summary.byCategory?.filter(c => c.type === 'GASTO' && c.is_single_time) || [];
-  const catGastosAcumulativos = summary.byCategory?.filter(c => c.type === 'GASTO' && !c.is_single_time) || [];
+  // Agrupamiento por SuperCategoría (Grupos)
+  const groupsData = (summary.byCategory || []).reduce((acc, cat) => {
+    if (cat.type !== 'GASTO') return acc;
+    const groupName = cat.group_name || 'Otros / Sin Grupo';
+    const groupColor = cat.group_color || '#94a3b8';
+    
+    if (!acc[groupName]) {
+      acc[groupName] = { 
+        name: groupName, 
+        color: groupColor, 
+        total: 0, 
+        budget: 0,
+        is_single_time: cat.is_single_time, // Simplificación: usamos el del primer item
+        categories: [] 
+      };
+    }
+    acc[groupName].total += parseFloat(cat.total || 0);
+    acc[groupName].budget += parseFloat(cat.budget || 0);
+    acc[groupName].categories.push(cat);
+    return acc;
+  }, {});
+
+  const catGroups = Object.values(groupsData).sort((a, b) => b.total - a.total);
+
+  // Filtrar categorías (Sólo Gastos) para vista normal
+  const catGastosFijos = (summary.byCategory?.filter(c => c.type === 'GASTO' && c.is_single_time) || [])
+    .sort((a, b) => b.total - a.total);
+  const catGastosAcumulativos = (summary.byCategory?.filter(c => c.type === 'GASTO' && !c.is_single_time) || [])
+    .sort((a, b) => b.total - a.total);
 
   const CategorySection = ({ title, data, monthProgressPercentage }) => {
     const [open, setOpen] = useState(true);
@@ -77,7 +104,7 @@ export default function Dashboard() {
 
         {/* CONTENT */}
         {open && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {data.map((cat, idx) => {
               const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
               const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
@@ -111,68 +138,62 @@ export default function Dashboard() {
               return (
                 <div
                   key={idx}
-                  className="bg-slate-50 p-4 rounded-xl border border-slate-100"
+                  className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm"
                 >
-                  {/* HEADER */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: cat.color || "#cbd5e1" }}
-                    />
-                    <p className="font-semibold text-slate-700 text-sm">
-                      {cat.name}
-                    </p>
-                  </div>
-
-                  {/* INFO */}
-                  <div className="flex justify-between items-center text-xs mb-2">
-                    <div className="text-slate-500">
-                      {cat.budget > 0 && <span>S/ {cat.budget}</span>}
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-bold text-slate-800">
-                        S/ {cat.total?.toFixed(2)}
-                      </p>
-                      <p className="text-slate-500">
-                        {percentageUsed.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* PROGRESS */}
-                  {cat.budget > 0 && (
-                    <div>
-                      <div className="flex justify-between text-[10px] mb-1">
-                        <span className={statusColor}>{statusText}</span>
-
-                        {!cat.is_single_time && monthProgressPercentage && (
-                          <span className="text-slate-400">
-                            S/ {projectedExpected.toFixed(2)}
-                          </span>
+                  {/* HEADER COMPACTO */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: cat.color || "#cbd5e1" }}
+                      />
+                      <p className="font-bold text-slate-700 text-sm truncate">
+                        {cat.name}
+                        {cat.categories && (
+                           <span className="ml-1 text-[10px] font-normal text-slate-400">({cat.categories.length} cat.)</span>
                         )}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                       <p className="font-bold text-slate-900 text-sm">
+                        S/ {cat.total?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* INFO SECUNDARIA Y PROGRESO */}
+                  {cat.budget > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-[10px]">
+                        <div className="flex gap-2 text-slate-400">
+                          <span>Pres: S/ {cat.budget}</span>
+                          <span className="font-medium text-slate-500">{percentageUsed.toFixed(0)}%</span>
+                        </div>
+                        <span className={`${statusColor} font-medium`}>{statusText}</span>
                       </div>
 
-                      <div className="w-full h-2 bg-slate-200 rounded-full relative overflow-hidden">
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full relative overflow-hidden">
                         {!cat.is_single_time && monthProgressPercentage && (
                           <div
-                            className="absolute inset-y-0 border-r-2 border-slate-900"
+                            className="absolute inset-y-0 border-r border-slate-400 z-10"
                             style={{ left: `${monthProgressPercentage}%` }}
                           />
                         )}
 
                         <div
-                          className={`h-full rounded-full ${isOverBudget ? "bg-red-500" : ""
-                            }`}
+                          className={`h-full rounded-full transition-all duration-500 ${isOverBudget ? "bg-red-500" : ""}`}
                           style={{
                             width: `${Math.min(percentageUsed, 100)}%`,
-                            backgroundColor: isOverBudget
-                              ? undefined
-                              : cat.color || "#cbd5e1",
+                            backgroundColor: isOverBudget ? undefined : cat.color || "#cbd5e1",
                           }}
                         />
                       </div>
                     </div>
+                  )}
+                  
+                  {/* SI NO HAY PRESUPUESTO (Vista ultra-compacta) */}
+                  {!cat.budget && (
+                    <div className="h-2" /> // Espaciador mínimo
                   )}
                 </div>
               );
@@ -249,28 +270,56 @@ export default function Dashboard() {
 
           {/* Gráfico / Distribución por Categoría Dividida */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
-            <h2 className="text-xl font-bold text-slate-800 mb-8 border-b pb-4">Desglose de Gastos</h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-4 border-b gap-4">
+              <h2 className="text-xl font-bold text-slate-800">Desglose de Gastos</h2>
+              
+              <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+                <button 
+                  onClick={() => setViewMode('category')}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === 'category' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Categorías
+                </button>
+                <button 
+                  onClick={() => setViewMode('group')}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === 'group' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Grupos
+                </button>
+              </div>
+            </div>
 
-            {(catGastosFijos.length === 0 && catGastosAcumulativos.length === 0) ? (
+            {(summary.byCategory?.length === 0) ? (
               <div className="py-10 text-center text-slate-500">No hay gastos registrados en este mes.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-1 gap-x-12 gap-y-8">
-                <div>
+                {viewMode === 'category' ? (
+                  <>
+                    <CategorySection
+                      title="📌 Gastos Fijos (1 sola vez)"
+                      data={catGastosFijos}
+                      totalType={totalGastos}
+                      monthProgressPercentage={summary.monthProgressPercentage}
+                    />
+                    <CategorySection
+                      title="🔄 Gastos Acumulativos"
+                      data={catGastosAcumulativos}
+                      totalType={totalGastos}
+                      monthProgressPercentage={summary.monthProgressPercentage}
+                    />
+                  </>
+                ) : (
                   <CategorySection
-                    title="📌 Gastos Fijos (1 sola vez)"
-                    data={catGastosFijos}
+                    title="📂 Gastos por SuperCategoría"
+                    data={catGroups}
                     totalType={totalGastos}
                     monthProgressPercentage={summary.monthProgressPercentage}
                   />
-                </div>
-                <div>
-                  <CategorySection
-                    title="🔄 Gastos Acumulativos"
-                    data={catGastosAcumulativos}
-                    totalType={totalGastos}
-                    monthProgressPercentage={summary.monthProgressPercentage}
-                  />
-                </div>
+                )}
               </div>
             )}
           </div>
