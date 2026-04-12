@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, TrendingDown, TrendingUp, DollarSign, CalendarCheck, PiggyBank, Target } from 'lucide-react';
+import { Loader2, TrendingDown, TrendingUp, DollarSign, CalendarCheck, PiggyBank, Target, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ChevronDown } from 'lucide-react';
 
@@ -279,6 +279,15 @@ export default function Dashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-4 border-b gap-4">
               <h2 className="text-xl font-bold text-slate-800">Desglose de Gastos</h2>
               
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <button 
+                onClick={() => navigate('/export')}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all border border-blue-100"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Exportar Excel
+              </button>
+
               <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
                 <button 
                   onClick={() => setViewMode('category')}
@@ -297,6 +306,7 @@ export default function Dashboard() {
                   Grupos
                 </button>
               </div>
+            </div>
             </div>
 
             {(summary.byCategory?.length === 0) ? (
