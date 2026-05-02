@@ -36,7 +36,7 @@ export default function IncomesForm() {
             // 2. Fetch Incomes del Mes Actual
             const resExp = await fetch(`/.netlify/functions/expenses?month=${filterMonth}`, { headers: getAuthHeaders() });
             const dataExp = await resExp.json();
-            const monthIncomes = Array.isArray(dataExp) ? dataExp.filter(item => item.category_type === 'INGRESO') : [];
+            const monthIncomes = Array.isArray(dataExp) ? dataExp.filter(item => item.transaction_type === 'INGRESO') : [];
 
             // 3. Crear Grilla haciendo Match (Left Join)
             const grid = incomeCats.map(cat => {
@@ -117,7 +117,8 @@ export default function IncomesForm() {
                         amount: currentAmount,
                         concept: row.concept,
                         category_id: row.categoryId,
-                        date: `${filterMonth}-01`
+                        date: `${filterMonth}-01`,
+                        type: 'INGRESO'
                     })
                 });
                 if (res.ok) {
@@ -135,7 +136,8 @@ export default function IncomesForm() {
                         amount: currentAmount,
                         concept: row.concept,
                         category_id: row.categoryId,
-                        date: `${filterMonth}-01`
+                        date: `${filterMonth}-01`,
+                        type: 'INGRESO'
                     })
                 });
                 if (res.ok) {

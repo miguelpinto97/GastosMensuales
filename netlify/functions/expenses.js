@@ -37,7 +37,8 @@ exports.handler = async (event) => {
                  c.name as category_name, 
                  c.color as category_color, 
                  c.type as category_type,
-                 cg.name as group_name
+                 cg.name as group_name,
+                 e.type as transaction_type
           FROM expenses e
           LEFT JOIN categories c ON e.category_id = c.id
           LEFT JOIN category_groups cg ON c.group_id = cg.id
@@ -50,7 +51,8 @@ exports.handler = async (event) => {
                  c.name as category_name, 
                  c.color as category_color, 
                  c.type as category_type,
-                 cg.name as group_name
+                 cg.name as group_name,
+                 e.type as transaction_type
           FROM expenses e
           LEFT JOIN categories c ON e.category_id = c.id
           LEFT JOIN category_groups cg ON c.group_id = cg.id
@@ -63,15 +65,15 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'POST') {
       const data = JSON.parse(event.body);
-      const { amount, concept, category_id, date } = data;
+      const { amount, concept, category_id, date, type } = data;
       
       if (!amount || !date) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields (amount, date)' }) };
       }
 
       const result = await sql`
-        INSERT INTO expenses (amount, concept, category_id, date, project_id, created_by) 
-        VALUES (${amount}, ${concept}, ${category_id || null}, ${date}, ${projectId}, ${userId}) 
+        INSERT INTO expenses (amount, concept, category_id, date, project_id, created_by, type) 
+        VALUES (${amount}, ${concept}, ${category_id || null}, ${date}, ${projectId}, ${userId}, ${type || 'GASTO'}) 
         RETURNING *
       `;
       return { statusCode: 201, headers, body: JSON.stringify(result[0]) };
@@ -79,7 +81,7 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'PUT') {
       const data = JSON.parse(event.body);
-      const { id, amount, concept, category_id, date } = data;
+      const { id, amount, concept, category_id, date, type } = data;
 
       if (!id || amount === undefined) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'ID and Amount are required' }) };
@@ -97,7 +99,9 @@ exports.handler = async (event) => {
         SET amount = ${amount}, 
             concept = COALESCE(${concept}, concept), 
             category_id = COALESCE(${category_id}, category_id), 
-            date = COALESCE(${date}, date)
+            date = COALESCE(${date}, date),
+            type = COALESCE(${type}, type),
+            updated_by = ${userId}
         WHERE id = ${id} AND project_id = ${projectId}
         RETURNING *
       `;

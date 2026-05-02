@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff, ArrowUpDown, ChevronUp, ChevronDown, Filter } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff, ArrowUpDown, ChevronUp, ChevronDown, Filter, Pencil, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -25,6 +25,7 @@ export default function ExpensesForm() {
   // Sorting and Filtering State
   const [sortConfig, setSortConfig] = useState({ key: 'correlative', direction: 'desc' });
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [userFilter, setUserFilter] = useState('all');
   
   // Update date range and form date when filterMonth changes
   const dateRange = useMemo(() => {
@@ -95,7 +96,7 @@ export default function ExpensesForm() {
         headers: getAuthHeaders()
       });
       const data = await res.json();
-      const onlyExpenses = Array.isArray(data) ? data.filter(item => item.category_type !== 'INGRESO') : [];
+      const onlyExpenses = Array.isArray(data) ? data.filter(item => item.transaction_type !== 'INGRESO') : [];
 
       // Asignar correlativo basado en el ID (orden de creación)
       const withCorrelative = [...onlyExpenses]
@@ -123,7 +124,8 @@ export default function ExpensesForm() {
           amount: parseFloat(form.amount),
           concept: form.concept,
           category_id: form.category_id ? parseInt(form.category_id) : null,
-          date: form.date
+          date: form.date,
+          type: 'GASTO'
         })
       });
       if (res.ok) {
@@ -173,9 +175,16 @@ export default function ExpensesForm() {
 
   // Filter and Sort Processing
   const filteredExpenses = expenses.filter(exp => {
-    if (categoryFilter === 'all') return true;
-    return exp.category_id?.toString() === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || exp.category_id?.toString() === categoryFilter;
+    const matchesUser = userFilter === 'all' || exp.created_by === userFilter;
+    return matchesCategory && matchesUser;
   });
+
+  // Get unique users for the filter
+  const uniqueUsers = useMemo(() => {
+    const users = expenses.map(exp => exp.created_by);
+    return [...new Set(users)].filter(Boolean).sort();
+  }, [expenses]);
 
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     const { key, direction } = sortConfig;
@@ -192,6 +201,47 @@ export default function ExpensesForm() {
     if (aValue > bValue) return direction === 'asc' ? 1 : -1;
     return 0;
   });
+
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({ amount: '', concept: '', category_id: '', date: '' });
+  const [editFilterGroupId, setEditFilterGroupId] = useState('none');
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setEditForm({
+      amount: item.amount,
+      concept: item.concept || '',
+      category_id: item.category_id || '',
+      date: item.date ? item.date.split('T')[0] : ''
+    });
+    // Find category to set initial filter group
+    const cat = categories.find(c => c.id === item.category_id);
+    setEditFilterGroupId(cat ? (cat.group_id || 'none') : 'none');
+  };
+
+  const handleSaveEdit = async (e) => {
+    if (e) e.preventDefault();
+    try {
+      const res = await fetch('/.netlify/functions/expenses', {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          id: editingItem.id,
+          amount: parseFloat(editForm.amount),
+          concept: editForm.concept,
+          category_id: editForm.category_id ? parseInt(editForm.category_id) : null,
+          date: editForm.date,
+          type: 'GASTO'
+        })
+      });
+      if (res.ok) {
+        setEditingItem(null);
+        await fetchExpenses(filterMonth);
+      }
+    } catch (err) {
+      console.error('Error updating item:', err);
+    }
+  };
 
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState(null);
@@ -384,30 +434,37 @@ export default function ExpensesForm() {
           <div className="col-span-12">
             <label className="block text-sm font-medium text-slate-600 mb-1">SuperCategoría (Filtro)</label>
             <div className="flex flex-wrap gap-2 py-2">
-              {[
-                { id: 'none', name: 'Sin Grupo', color: '#cbd5e1' }, 
-                ...groups
-              ].map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setFilterGroupId(item.id);
-                    setForm(prev => ({ ...prev, category_id: '' }));
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
-                    filterGroupId === item.id 
-                      ? 'bg-blue-600 border-blue-600 text-white' 
-                      : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                  }`}
-                >
-                  <div 
-                    className="w-2 h-2 rounded-full shrink-0" 
-                    style={{ backgroundColor: filterGroupId === item.id ? 'white' : (item.color || '#cbd5e1') }}
-                  ></div>
-                  {item.name}
-                </button>
-              ))}
+              {(() => {
+                const hasUngrouped = categories.some(c => !c.group_id);
+                const groupsWithCategories = groups.filter(g => categories.some(c => c.group_id === g.id));
+                
+                const groupOptions = [
+                  ...(hasUngrouped ? [{ id: 'none', name: 'Sin Grupo', color: '#cbd5e1' }] : []),
+                  ...groupsWithCategories
+                ];
+
+                return groupOptions.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setFilterGroupId(item.id);
+                      setForm(prev => ({ ...prev, category_id: '' }));
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
+                      filterGroupId === item.id 
+                        ? 'bg-blue-600 border-blue-600 text-white' 
+                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full shrink-0" 
+                      style={{ backgroundColor: filterGroupId === item.id ? 'white' : (item.color || '#cbd5e1') }}
+                    ></div>
+                    {item.name}
+                  </button>
+                ));
+              })()}
             </div>
           </div>
           <div className="col-span-12">
@@ -487,6 +544,20 @@ export default function ExpensesForm() {
               </select>
             </div>
 
+            <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-sm">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+                className="text-xs bg-transparent border-none focus:ring-0 outline-none truncate max-w-[100px] md:max-w-[150px]"
+              >
+                <option value="all">Usuarios</option>
+                {uniqueUsers.map(user => (
+                  <option key={user} value={user}>{user}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Selector de ordenamiento para móvil */}
             <div className="md:hidden flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-sm">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
@@ -551,13 +622,13 @@ export default function ExpensesForm() {
                   >
                     <div className="flex items-center">Concepto {getSortIcon('concept')}</div>
                   </th>
-                  <th
-                    className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
+                   <th className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => requestSort('amount')}
                   >
                     <div className="flex items-center justify-end">Monto {getSortIcon('amount')}</div>
                   </th>
                   <th className="px-6 py-4 text-center">Usuario</th>
+                  <th className="px-6 py-4 text-center">Editado por</th>
                   <th className="px-6 py-4 text-center">Acciones</th>
                 </tr>
               </thead>
@@ -581,23 +652,35 @@ export default function ExpensesForm() {
                         {exp.group_name ? `${exp.group_name} - ${exp.category_name}` : (exp.category_name || 'Sin categoría')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-800">
-                      {exp.concept || (exp.group_name ? `${exp.group_name} - ${exp.category_name}` : exp.category_name)}
+                     <td className="px-6 py-4 font-medium text-slate-800">
+                      {exp.concept || '---'}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium">
+                    <td className="px-6 py-4 text-right font-bold text-slate-900">
                       S/ {parseFloat(exp.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-center text-xs text-slate-500 font-medium">
                       {exp.created_by}
                     </td>
+                    <td className="px-6 py-4 text-center text-xs text-slate-400 font-medium">
+                      {exp.updated_by || '---'}
+                    </td>
                     <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleDelete(exp.id)}
-                        className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4 mx-auto" />
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEditModal(exp)}
+                          className="text-blue-400 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(exp.id)}
+                          className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -632,8 +715,16 @@ export default function ExpensesForm() {
                     {exp.group_name ? `${exp.group_name} - ${exp.category_name}` : (exp.category_name || 'Sin categoría')}
                   </span>
                   
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-slate-400 font-medium">{exp.created_by}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-medium">Por: {exp.created_by}</span>
+                    {exp.updated_by && <span className="text-[10px] text-slate-400 italic">Edit: {exp.updated_by}</span>}
+                    <button
+                      onClick={() => openEditModal(exp)}
+                      className="text-blue-400 hover:text-blue-600 p-1"
+                      title="Editar"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleDelete(exp.id)}
                       className="text-red-400 hover:text-red-600 p-1"
@@ -651,6 +742,147 @@ export default function ExpensesForm() {
     </div>
 
       </div>
+      {/* Modal de Edición */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-slate-800">Editar Registro</h3>
+              <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha</label>
+                  <input
+                    type="date"
+                    value={editForm.date}
+                    onChange={e => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    min={dateRange.min}
+                    max={dateRange.max}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Monto (S/)</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <DollarSign className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.amount}
+                      onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                      className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">SuperCategoría (Filtro)</label>
+                <div className="flex flex-wrap gap-2 py-1">
+                  {(() => {
+                    const hasUngroupedEdit = categories.some(c => !c.group_id);
+                    const groupsWithCategoriesEdit = groups.filter(g => categories.some(c => c.group_id === g.id));
+                    
+                    const editGroupOptions = [
+                      ...(hasUngroupedEdit ? [{ id: 'none', name: 'Sin Grupo', color: '#cbd5e1' }] : []),
+                      ...groupsWithCategoriesEdit
+                    ];
+
+                    return editGroupOptions.map(item => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setEditFilterGroupId(item.id);
+                          setEditForm(prev => ({ ...prev, category_id: '' }));
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
+                          editFilterGroupId === item.id 
+                            ? 'bg-blue-600 border-blue-600 text-white' 
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div 
+                          className="w-2 h-2 rounded-full shrink-0" 
+                          style={{ backgroundColor: editFilterGroupId === item.id ? 'white' : (item.color || '#cbd5e1') }}
+                        ></div>
+                        {item.name}
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría</label>
+                <div className="flex flex-wrap gap-2 py-1">
+                  {categories
+                    .filter(c => {
+                      if (editFilterGroupId === 'none') return c.group_id === null || c.group_id === undefined;
+                      return c.group_id === editFilterGroupId;
+                    })
+                    .map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, category_id: c.id })}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
+                          editForm.category_id === c.id 
+                            ? 'bg-blue-600 border-blue-600 text-white' 
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div 
+                          className="w-2 h-2 rounded-full shrink-0" 
+                          style={{ backgroundColor: editForm.category_id === c.id ? 'white' : (c.color || '#cbd5e1') }}
+                        ></div>
+                        {c.name}
+                      </button>
+                    ))
+                  }
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Concepto</label>
+                <input
+                  type="text"
+                  value={editForm.concept}
+                  onChange={e => setEditForm({ ...editForm, concept: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Ej. Almuerzo..."
+                />
+              </div>
+              
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

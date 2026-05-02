@@ -34,14 +34,14 @@ exports.handler = async (event) => {
     const results = await sql`
       SELECT 
         e.date,
-        c.type,
+        COALESCE(c.type, e.type) as type,
         g.name as supercategory,
         c.name as category,
         e.concept,
         e.amount,
         e.created_at
       FROM expenses e
-      INNER JOIN categories c ON e.category_id = c.id
+      LEFT JOIN categories c ON e.category_id = c.id
       LEFT JOIN category_groups g ON c.group_id = g.id
       WHERE e.project_id = ${projectId}
         AND e.date >= ${start}

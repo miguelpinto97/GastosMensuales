@@ -34,11 +34,11 @@ exports.handler = async (event) => {
 
       // Total per Type (INGRESO, GASTO, AHORRO)
       const totalsByTypeResult = await sql`
-        SELECT c.type, SUM(e.amount) as total 
+        SELECT COALESCE(c.type, e.type) as type, SUM(e.amount) as total 
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         WHERE EXTRACT(YEAR FROM e.date) = ${year} AND EXTRACT(MONTH FROM e.date) = ${month} AND e.project_id = ${projectId}
-        GROUP BY c.type
+        GROUP BY COALESCE(c.type, e.type)
       `;
       
       const totalsByType = {

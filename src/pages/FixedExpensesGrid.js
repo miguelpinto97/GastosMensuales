@@ -125,7 +125,8 @@ export default function ExpensesForm() {
                         amount: currentAmount,
                         concept: row.concept,
                         category_id: row.categoryId,
-                        date: `${filterMonth}-01` // Principio del mes seleccionado
+                        date: `${filterMonth}-01`,
+                        type: 'GASTO'
                     })
                 });
                 if (res.ok) {
@@ -143,7 +144,8 @@ export default function ExpensesForm() {
                         amount: currentAmount,
                         concept: row.concept,
                         category_id: row.categoryId,
-                        date: `${filterMonth}-01`
+                        date: `${filterMonth}-01`,
+                        type: 'GASTO'
                     })
                 });
                 if (res.ok) {
