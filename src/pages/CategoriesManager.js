@@ -767,26 +767,22 @@ export default function CategoriesManager() {
                           S/ {parseFloat(cat.budget || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {isOwner(cat.created_by) ? (
-                            <div className="flex justify-end gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button 
-                                onClick={() => startEdit(cat)}
-                                className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                                title="Editar"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={() => handleDelete(cat.id)}
-                                className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                                title="Eliminar"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">Solo Vista</span>
-                          )}
+                          <div className="flex justify-end gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => startEdit(cat)}
+                              className="text-blue-500 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(cat.id)}
+                              className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
