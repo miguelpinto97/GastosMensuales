@@ -89,120 +89,123 @@ export default function Dashboard() {
 
     if (data.length === 0) return null;
 
-    return (
-      <div className="mb-8 last:mb-0">
+    // Grouping for the "Columnar" view
+    const superGroups = {};
+    data.forEach(item => {
+      const gid = item.group_id || 'none';
+      if (!superGroups[gid]) {
+        superGroups[gid] = {
+          id: gid,
+          name: item.group_name || 'Otros / Sin Grupo',
+          color: item.group_color || '#94a3b8',
+          items: []
+        };
+      }
+      superGroups[gid].items.push(item);
+    });
 
+    const superGroupsList = Object.values(superGroups).map(group => ({
+      ...group,
+      items: group.items.sort((a, b) => a.name.localeCompare(b.name))
+    }));
+
+    return (
+      <div className="mb-12 last:mb-0">
         {/* HEADER (clickable) */}
         <button
           onClick={() => setOpen(!open)}
-          className="w-full flex justify-between items-center mb-4"
+          className="w-full flex justify-between items-center mb-6 pb-2 border-b-2 border-slate-100"
         >
-          <h3 className="text-lg font-semibold text-slate-700 text-left">
+          <h3 className="text-xl font-bold text-slate-700 text-left flex items-center gap-2">
             {title}
+            <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+              {superGroupsList.length} Grupos
+            </span>
           </h3>
 
           <ChevronDown
-            className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""
-              }`}
+            className={`w-6 h-6 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         </button>
 
-        {/* CONTENT */}
+        {/* CONTENT - GRID DINÁMICO */}
         {open && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {data.map((cat, idx) => {
-              const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
-              const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
-
-              let projectedExpected = 0;
-              let statusText = '';
-              let statusColor = 'text-slate-500';
-
-              if (cat.budget > 0) {
-                if (cat.is_single_time) {
-                  projectedExpected = cat.budget;
-                  statusText = cat.total >= cat.budget ? 'Pagado' : 'Pendiente';
-                  statusColor = cat.total >= cat.budget ? 'text-emerald-500' : 'text-amber-500';
-                } else {
-                  projectedExpected = cat.budget * (monthProgressPercentage / 100);
-                  const difference = cat.total - projectedExpected;
-
-                  if (difference > (cat.budget * 0.1)) {
-                    statusText = 'Gastando rápido';
-                    statusColor = 'text-red-500';
-                  } else if (difference < -(cat.budget * 0.1)) {
-                    statusText = 'Ahorrando';
-                    statusColor = 'text-emerald-500';
-                  } else {
-                    statusText = 'A ritmo normal';
-                    statusColor = 'text-blue-500';
-                  }
-                }
-              }
-
-              return (
-                <div
-                  key={idx}
-                  className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm"
-                >
-                  {/* HEADER COMPACTO */}
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <span
-                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color || "#cbd5e1" }}
-                      />
-                      <p className="font-bold text-slate-700 text-sm truncate">
-                        {cat.isGroup ? cat.name : (cat.group_name ? `${cat.group_name} - ${cat.name}` : cat.name)}
-                        {cat.categories && (
-                          <span className="ml-1 text-[10px] font-normal text-slate-400">({cat.categories.length} cat.)</span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0 ml-2">
-                       <p className="font-bold text-slate-900 text-sm">
-                        S/ {cat.total?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* INFO SECUNDARIA Y PROGRESO */}
-                  {cat.budget > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <div className="flex gap-2 text-slate-400">
-                          <span>Pres: S/ {cat.budget}</span>
-                          <span className="font-medium text-slate-500">{percentageUsed.toFixed(0)}%</span>
-                        </div>
-                        <span className={`${statusColor} font-medium`}>{statusText}</span>
-                      </div>
-
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full relative overflow-hidden">
-                        {!cat.is_single_time && monthProgressPercentage && (
-                          <div
-                            className="absolute inset-y-0 border-r border-slate-400 z-10"
-                            style={{ left: `${monthProgressPercentage}%` }}
-                          />
-                        )}
-
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${isOverBudget ? "bg-red-500" : ""}`}
-                          style={{
-                            width: `${Math.min(percentageUsed, 100)}%`,
-                            backgroundColor: isOverBudget ? undefined : cat.color || "#cbd5e1",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* SI NO HAY PRESUPUESTO (Vista ultra-compacta) */}
-                  {!cat.budget && (
-                    <div className="h-2" /> // Espaciador mínimo
-                  )}
+          <div className={superGroupsList.length >= 3 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start" 
+            : "flex flex-col gap-8"
+          }>
+            {superGroupsList.map((group, gIdx) => (
+              <div 
+                key={group.id} 
+                className={`flex flex-col gap-3 ${superGroupsList.length < 3 ? 'w-full' : ''}`}
+              >
+                {/* TÍTULO DE LA COLUMNA / SECCIÓN */}
+                <div className="flex items-center gap-2 mb-1 px-1">
+                  <div className="w-1.5 h-4 rounded-full" style={{ backgroundColor: group.color }} />
+                  <h4 className="font-black text-slate-500 uppercase text-[11px] tracking-widest">
+                    {group.name}
+                  </h4>
                 </div>
-              );
-            })}
+
+                {/* LISTA DE CATEGORÍAS - Grid si hay pocos grupos, Columna si hay muchos */}
+                <div className={`grid gap-3 ${superGroupsList.length < 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+                  {group.items.map((cat, idx) => {
+                    const percentageUsed = cat.budget > 0 ? (cat.total / cat.budget) * 100 : 0;
+                    const isOverBudget = cat.budget > 0 && cat.total > cat.budget;
+
+                    let statusText = '';
+                    if (cat.budget > 0) {
+                      if (cat.is_single_time) {
+                        statusText = cat.total >= cat.budget ? 'Pagado' : 'Pendiente';
+                      } else {
+                        const projectedExpected = cat.budget * (monthProgressPercentage / 100);
+                        const difference = cat.total - projectedExpected;
+                        if (difference > (cat.budget * 0.1)) statusText = 'Rápido';
+                        else if (difference < -(cat.budget * 0.1)) statusText = 'Ahorro';
+                        else statusText = 'Normal';
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-xl shadow-sm border transition-all hover:shadow-md bg-white/80"
+                        style={{ 
+                          backgroundColor: `${cat.color}15`,
+                          borderColor: `${cat.color}40`,
+                          color: cat.color
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="font-bold text-xs truncate max-w-[140px]">{cat.name}</p>
+                          <p className="font-black text-xs shrink-0">S/ {cat.total?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                        </div>
+
+                        {cat.budget > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[9px] font-bold">
+                              <span className="opacity-70">Pres: S/ {cat.budget}</span>
+                              <span className={isOverBudget ? 'text-red-600' : 'opacity-90'}>
+                                {percentageUsed.toFixed(0)}% • {statusText}
+                              </span>
+                            </div>
+                            <div className="w-full h-1 bg-white/50 rounded-full relative overflow-hidden border border-black/5">
+                              {!cat.is_single_time && monthProgressPercentage && (
+                                <div className="absolute inset-y-0 border-r border-black/10 z-10" style={{ left: `${monthProgressPercentage}%` }} />
+                              )}
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${isOverBudget ? "bg-red-500" : ""}`}
+                                style={{ width: `${Math.min(percentageUsed, 100)}%`, backgroundColor: isOverBudget ? undefined : cat.color }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

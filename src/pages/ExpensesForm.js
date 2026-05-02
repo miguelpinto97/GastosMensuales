@@ -366,7 +366,7 @@ export default function ExpensesForm() {
     // 1. Extract Amount and its position
     const amountMatch = text.match(/(\d+([.,]\d+)?)/);
     if (!amountMatch) {
-      alert("No pude detectar un monto. Formato sugerido: 'Concepto Monto Categoría'");
+      alert("No pude detectar un monto. Formato sugerido: 'Categoría Monto Concepto'");
       return;
     }
 
@@ -374,76 +374,99 @@ export default function ExpensesForm() {
     const amountStr = amountMatch[0];
     const amountIndex = text.indexOf(amountStr);
 
-    // 2. Split by Amount to respect strict order: [Concepto] [Monto] [Categoría]
+    // 2. Split by Amount: [Categoría] [Monto] [Concepto]
     const beforeAmount = text.substring(0, amountIndex).trim();
     const afterAmount = text.substring(amountIndex + amountStr.length).trim();
 
-    // 3. Identify Category in the text AFTER the amount
-    let matchedCategoryId = form.category_id;
+    // 3. Identify SuperCategory and Category in the text BEFORE the amount
+    let matchedCat = null;
     let categoryFound = false;
-    let matchedCatName = '';
+    let matchedGroup = null;
 
-    // Sort categories by length descending to match longer names first
-    const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
+    const searchTextBefore = beforeAmount.toLowerCase().trim();
 
-    // Primary search: after the amount (as per requested order)
-    const searchTextAfter = afterAmount.toLowerCase().trim();
-    if (searchTextAfter) {
-      const spokenWords = searchTextAfter.split(/\s+/).filter(w => w.length >= 3);
+    if (searchTextBefore) {
+      // First, try to identify a SuperCategory (Group)
+      for (const g of groups) {
+        const groupName = g.name.toLowerCase();
+        if (searchTextBefore.includes(groupName)) {
+          matchedGroup = g;
+          break;
+        }
+      }
 
-      for (const cat of sortedCategories) {
+      // Filter categories to prioritize those in the matched group if any
+      let searchPool = [...categories];
+      if (matchedGroup) {
+        searchPool = categories.filter(c => c.group_id === matchedGroup.id);
+      }
+
+      const sortedPool = searchPool.sort((a, b) => b.name.length - a.name.length);
+      const spokenWords = searchTextBefore.split(/\s+/).filter(w => w.length >= 3);
+
+      for (const cat of sortedPool) {
         const catNameFull = cat.name.toLowerCase();
-        // Clean name removes parentheses but we keep the content for matching if needed
         const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
         const catWords = catNameClean.split(/\s+/).filter(w => w.length >= 3);
 
-        // 1. Exact or partial string match (Bidirectional)
-        const spokenContainsCat = searchTextAfter.includes(catNameClean) || searchTextAfter.includes(catNameFull);
-        const catContainsSpoken = catNameClean.includes(searchTextAfter) || catNameFull.includes(searchTextAfter);
-
-        // 2. Word-level match (e.g. "Trabajo" matching "Transportes (Trabajo)")
+        const spokenContainsCat = searchTextBefore.includes(catNameClean) || searchTextBefore.includes(catNameFull);
+        const catContainsSpoken = catNameClean.includes(searchTextBefore) || catNameFull.includes(searchTextBefore);
         const wordMatch = spokenWords.some(sw => catWords.some(cw => cw.includes(sw) || sw.includes(cw)));
 
         if (spokenContainsCat || catContainsSpoken || wordMatch) {
-          matchedCategoryId = cat.id;
-          matchedCatName = cat.name;
+          matchedCat = cat;
           categoryFound = true;
           break;
         }
       }
+
+      // Fallback: If no category was found in the matched group, search in ALL categories
+      if (!categoryFound && matchedGroup) {
+        const allSorted = [...categories].sort((a, b) => b.name.length - a.name.length);
+        for (const cat of allSorted) {
+          const catNameFull = cat.name.toLowerCase();
+          const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+          const spokenContainsCat = searchTextBefore.includes(catNameClean) || searchTextBefore.includes(catNameFull);
+          if (spokenContainsCat) {
+            matchedCat = cat;
+            categoryFound = true;
+            break;
+          }
+        }
+      }
     }
 
-    // 4. Identify Concept (Text before amount)
-    let concept = beforeAmount;
-
-    // Clean up concept (remove common filler words)
-    const fillers = ['gasté', 'pagé', 'pagué', 'el', 'la', 'un', 'una', 'de', 'del', 'por', 'con', 'en'];
+    // 4. Identify Concept (Text AFTER amount)
+    let concept = afterAmount;
+    const fillers = ['gasté', 'pagé', 'pagué', 'el', 'la', 'un', 'una', 'de', 'del', 'por', 'con', 'en', 'registra', 'agrega', 'compré'];
+    
     concept = concept.split(/\s+/)
       .filter(word => !fillers.includes(word))
       .join(' ')
       .trim();
 
-    // If concept is empty but we have text after amount that wasn't the category, 
-    // maybe parts of it are the concept? (Fallback but following order)
-    if (!concept && afterAmount && !categoryFound) {
-      concept = afterAmount;
-    }
-
     if (concept.length > 0) {
       concept = concept.charAt(0).toUpperCase() + concept.slice(1);
     }
 
-    setForm(prev => ({
-      ...prev,
-      amount: amount,
-      concept: concept || prev.concept,
-      category_id: matchedCategoryId
-    }));
-
-    if (categoryFound) {
-      setVoiceFeedback(`Capturado: "${concept}" S/ ${amount} en [${matchedCatName}]`);
+    // 5. Update UI and State
+    if (categoryFound && matchedCat) {
+      // Auto-click SuperCategory and Category
+      setFilterGroupId(matchedCat.group_id || 'none');
+      setForm(prev => ({
+        ...prev,
+        amount: amount,
+        concept: concept || prev.concept,
+        category_id: matchedCat.id
+      }));
+      setVoiceFeedback(`Capturado: [${matchedCat.name}] S/ ${amount} ${concept ? `- "${concept}"` : ''}`);
     } else {
-      setVoiceFeedback(`Capturado: "${concept}" S/ ${amount} (Categoría no detectada)`);
+      setForm(prev => ({
+        ...prev,
+        amount: amount,
+        concept: concept || prev.concept
+      }));
+      setVoiceFeedback(`Capturado: S/ ${amount} ${concept ? `- "${concept}"` : ''} (Categoría no detectada)`);
     }
 
     setTimeout(() => setVoiceFeedback(null), 6000);

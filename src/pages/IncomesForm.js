@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Loader2, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Filter, Pencil, X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff, ArrowUpDown, ChevronUp, ChevronDown, Filter, Pencil, X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -26,6 +26,8 @@ export default function IncomesForm() {
   const [sortConfig, setSortConfig] = useState({ key: 'correlative', direction: 'desc' });
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [userFilter, setUserFilter] = useState('all');
+  const [isListening, setIsListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState(null);
   
   // Update date range and form date when filterMonth changes
   const dateRange = useMemo(() => {
@@ -300,6 +302,143 @@ export default function IncomesForm() {
     setEditFilterGroupId(cat ? (cat.group_id || 'none') : 'none');
   };
 
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz. Prueba con Chrome o Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      parseVoiceInput(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const parseVoiceInput = (text) => {
+    const amountMatch = text.match(/(\d+([.,]\d+)?)/);
+    if (!amountMatch) {
+      alert("No pude detectar un monto. Formato sugerido: 'Categoría Monto Concepto'");
+      return;
+    }
+
+    const amount = amountMatch[1].replace(',', '.');
+    const amountStr = amountMatch[0];
+    const amountIndex = text.indexOf(amountStr);
+
+    const beforeAmount = text.substring(0, amountIndex).trim();
+    const afterAmount = text.substring(amountIndex + amountStr.length).trim();
+
+    let matchedCat = null;
+    let categoryFound = false;
+    let matchedGroup = null;
+
+    const searchTextBefore = beforeAmount.toLowerCase().trim();
+
+    if (searchTextBefore) {
+      // First, try to identify a SuperCategory (Group)
+      for (const g of groups) {
+        const groupName = g.name.toLowerCase();
+        if (searchTextBefore.includes(groupName)) {
+          matchedGroup = g;
+          break;
+        }
+      }
+
+      // Filter categories to prioritize those in the matched group if any
+      let searchPool = [...categories];
+      if (matchedGroup) {
+        searchPool = categories.filter(c => c.group_id === matchedGroup.id);
+      }
+
+      const sortedPool = searchPool.sort((a, b) => b.name.length - a.name.length);
+      const spokenWords = searchTextBefore.split(/\s+/).filter(w => w.length >= 3);
+
+      for (const cat of sortedPool) {
+        const catNameFull = cat.name.toLowerCase();
+        const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+        const catWords = catNameClean.split(/\s+/).filter(w => w.length >= 3);
+
+        const spokenContainsCat = searchTextBefore.includes(catNameClean) || searchTextBefore.includes(catNameFull);
+        const catContainsSpoken = catNameClean.includes(searchTextBefore) || catNameFull.includes(searchTextBefore);
+        const wordMatch = spokenWords.some(sw => catWords.some(cw => cw.includes(sw) || sw.includes(cw)));
+
+        if (spokenContainsCat || catContainsSpoken || wordMatch) {
+          matchedCat = cat;
+          categoryFound = true;
+          break;
+        }
+      }
+
+      // Fallback: If no category was found in the matched group, search in ALL categories
+      if (!categoryFound && matchedGroup) {
+        const allSorted = [...categories].sort((a, b) => b.name.length - a.name.length);
+        for (const cat of allSorted) {
+          const catNameFull = cat.name.toLowerCase();
+          const catNameClean = catNameFull.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+          const spokenContainsCat = searchTextBefore.includes(catNameClean) || searchTextBefore.includes(catNameFull);
+          if (spokenContainsCat) {
+            matchedCat = cat;
+            categoryFound = true;
+            break;
+          }
+        }
+      }
+    }
+
+    let concept = afterAmount;
+    const fillers = ['gané', 'recibí', 'el', 'la', 'un', 'una', 'de', 'del', 'por', 'con', 'en', 'registra', 'agrega', 'cobré', 'pago'];
+    
+    concept = concept.split(/\s+/)
+      .filter(word => !fillers.includes(word))
+      .join(' ')
+      .trim();
+
+    if (concept.length > 0) {
+      concept = concept.charAt(0).toUpperCase() + concept.slice(1);
+    }
+
+    if (categoryFound && matchedCat) {
+      setFilterGroupId(matchedCat.group_id || 'none');
+      setForm(prev => ({
+        ...prev,
+        amount: amount,
+        concept: concept || prev.concept,
+        category_id: matchedCat.id
+      }));
+      setVoiceFeedback(`Capturado: [${matchedCat.name}] S/ ${amount} ${concept ? `- "${concept}"` : ''}`);
+    } else {
+      setForm(prev => ({
+        ...prev,
+        amount: amount,
+        concept: concept || prev.concept
+      }));
+      setVoiceFeedback(`Capturado: S/ ${amount} ${concept ? `- "${concept}"` : ''} (Categoría no detectada)`);
+    }
+
+    setTimeout(() => setVoiceFeedback(null), 6000);
+  };
+
   const handleSaveEdit = async (e) => {
     if (e) e.preventDefault();
     try {
@@ -338,7 +477,24 @@ export default function IncomesForm() {
       </div>
 
       <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-xl shadow-sm">
-        <h2 className="text-lg font-semibold text-emerald-800 mb-4">Nuevo Ingreso</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-emerald-800">Nuevo Ingreso</h2>
+          <button
+            onClick={startVoiceInput}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${isListening
+              ? 'bg-red-100 text-red-600 animate-pulse'
+              : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+              }`}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            {isListening ? 'Escuchando...' : 'Registrar por voz'}
+          </button>
+        </div>
+        {voiceFeedback && (
+          <div className="mb-4 p-2 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs rounded-lg animate-in fade-in duration-300">
+            {voiceFeedback}
+          </div>
+        )}
         <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-12">
             <div className="col-span-12 md:col-span-4">
