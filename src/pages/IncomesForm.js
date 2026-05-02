@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Trash2, Loader2, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Filter, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Filter, Pencil, X, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -206,6 +206,87 @@ export default function IncomesForm() {
   const [editForm, setEditForm] = useState({ amount: '', concept: '', category_id: '', date: '' });
   const [editFilterGroupId, setEditFilterGroupId] = useState('none');
 
+  const DateSelector = ({ value, onChange, min, max, colorClass = "emerald" }) => {
+    const inputRef = useRef(null);
+
+    const handlePrevDay = () => {
+      const d = new Date(value + 'T12:00:00');
+      d.setDate(d.getDate() - 1);
+      const newDate = d.toISOString().split('T')[0];
+      if (newDate >= min) onChange(newDate);
+    };
+
+    const handleNextDay = () => {
+      const d = new Date(value + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      const newDate = d.toISOString().split('T')[0];
+      if (newDate <= max) onChange(newDate);
+    };
+
+    const handleOpenPicker = (e) => {
+      if (inputRef.current) {
+        try {
+          if (inputRef.current.showPicker) {
+            inputRef.current.showPicker();
+          } else {
+            inputRef.current.click();
+          }
+        } catch (err) {
+          inputRef.current.click();
+        }
+      }
+    };
+
+    const dateObj = new Date(value + 'T12:00:00');
+    const dayNumber = dateObj.getDate();
+    const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+
+    return (
+      <div className="flex items-center gap-1">
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handlePrevDay(); }}
+          disabled={value <= min}
+          className={`p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 transition-colors`}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        
+        <div 
+          className="relative flex-1 group cursor-pointer" 
+          onClick={handleOpenPicker}
+        >
+          <input
+            ref={inputRef}
+            type="date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            min={min}
+            max={max}
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
+            required
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className={`flex items-center justify-between px-4 py-2 border border-slate-300 rounded-lg bg-white group-hover:border-${colorClass}-400 transition-colors shadow-sm`}>
+            <span className="font-bold text-slate-700 capitalize text-sm">
+              {dayNumber} - {dayName}
+            </span>
+            <Calendar className={`w-4 h-4 text-slate-400`} />
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handleNextDay(); }}
+          disabled={value >= max}
+          className={`p-2 hover:bg-slate-100 rounded-lg text-slate-400 disabled:opacity-20 transition-colors`}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+    );
+  };
+
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditForm({
@@ -260,16 +341,14 @@ export default function IncomesForm() {
         <h2 className="text-lg font-semibold text-emerald-800 mb-4">Nuevo Ingreso</h2>
         <form onSubmit={handleAddIncome} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           <div className="col-span-12 grid grid-cols-1 gap-4 md:grid-cols-12">
-            <label className="col-span-1 block text-sm font-medium text-emerald-700 mb-1">Fecha</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={e => setForm({ ...form, date: e.target.value })}
-              className="col-span-3 w-full px-4 py-2 border border-emerald-200 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-              min={dateRange.min}
-              max={dateRange.max}
-              required
-            />
+            <div className="col-span-12 md:col-span-4">
+              <DateSelector 
+                value={form.date} 
+                onChange={(val) => setForm({ ...form, date: val })}
+                min={dateRange.min}
+                max={dateRange.max}
+              />
+            </div>
           </div>
           <div className="col-span-12 md:col-span-4">
             <label className="block text-sm font-medium text-emerald-700 mb-1">Monto (S/)</label>
@@ -625,14 +704,11 @@ export default function IncomesForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-emerald-500 uppercase mb-1">Fecha</label>
-                  <input
-                    type="date"
+                  <DateSelector 
                     value={editForm.date}
-                    onChange={e => setEditForm({ ...editForm, date: e.target.value })}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                    onChange={(val) => setEditForm({ ...editForm, date: val })}
                     min={dateRange.min}
                     max={dateRange.max}
-                    required
                   />
                 </div>
                 
