@@ -104,10 +104,16 @@ export default function Dashboard() {
       superGroups[gid].items.push(item);
     });
 
-    const superGroupsList = Object.values(superGroups).map(group => ({
-      ...group,
-      items: group.items.sort((a, b) => a.name.localeCompare(b.name))
-    }));
+    const superGroupsList = Object.values(superGroups)
+      .map(group => ({
+        ...group,
+        items: group.items.sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .sort((a, b) => {
+        if (a.id === 'none') return -1;
+        if (b.id === 'none') return 1;
+        return 0;
+      });
 
     const forceBlackText = true; // Cambiar a false para volver a usar el color de la categoría en el texto
 
