@@ -3,7 +3,7 @@ import { Loader2, DollarSign, Save, Search, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function IncomesForm() {
-    const { activeProject, getAuthHeaders, isOwner } = useAuth();
+    const { activeProject, getAuthHeaders, isOwner, filterMonth, setFilterMonth } = useAuth();
     const [categories, setCategories] = useState([]);
     const [incomes, setIncomes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -14,8 +14,7 @@ export default function IncomesForm() {
     // Estado de guardado por fila (para mostrar feedback visual)
     const [savingRows, setSavingRows] = useState({});
 
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const [filterMonth, setFilterMonth] = useState(currentMonth);
+
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {

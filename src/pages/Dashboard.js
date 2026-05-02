@@ -5,13 +5,12 @@ import { useAuth } from '../context/AuthContext';
 import { ChevronDown } from 'lucide-react';
 
 export default function Dashboard() {
-  const { activeProject, getAuthHeaders } = useAuth();
+  const { activeProject, getAuthHeaders, filterMonth, setFilterMonth } = useAuth();
   const navigate = useNavigate();
   const [summary, setSummary] = useState({ totalsByType: {}, byCategory: [] });
   const [loading, setLoading] = useState(true);
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const [filterMonth, setFilterMonth] = useState(currentMonth);
+
   const [viewMode, setViewMode] = useState('category'); // 'category' o 'group'
 
   useEffect(() => {

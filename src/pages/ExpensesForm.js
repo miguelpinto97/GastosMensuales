@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Loader2, DollarSign, Mic, MicOff, ArrowUpDown, ChevronUp, ChevronDown, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import SnapCarousel from '../components/SnapCarousel';
+
 
 export default function ExpensesForm() {
-  const { activeProject, getAuthHeaders, isOwner } = useAuth();
+  const { activeProject, getAuthHeaders, isOwner, filterMonth, setFilterMonth } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,12 +20,34 @@ export default function ExpensesForm() {
   const [groups, setGroups] = useState([]);
   const [filterGroupId, setFilterGroupId] = useState('none');
 
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const [filterMonth, setFilterMonth] = useState(currentMonth);
+
 
   // Sorting and Filtering State
   const [sortConfig, setSortConfig] = useState({ key: 'correlative', direction: 'desc' });
   const [categoryFilter, setCategoryFilter] = useState('all');
+  
+  // Update date range and form date when filterMonth changes
+  const dateRange = useMemo(() => {
+    if (!filterMonth) return { min: '', max: '' };
+    const [year, month] = filterMonth.split('-');
+    const lastDay = new Date(year, month, 0).getDate();
+    return {
+      min: `${filterMonth}-01`,
+      max: `${filterMonth}-${String(lastDay).padStart(2, '0')}`
+    };
+  }, [filterMonth]);
+
+  useEffect(() => {
+    if (filterMonth && (!form.date || !form.date.startsWith(filterMonth))) {
+      // If today is in the selected month, use today, otherwise use the 1st
+      const today = new Date().toISOString().split('T')[0];
+      if (today.startsWith(filterMonth)) {
+        setForm(prev => ({ ...prev, date: today }));
+      } else {
+        setForm(prev => ({ ...prev, date: `${filterMonth}-01` }));
+      }
+    }
+  }, [filterMonth]);
 
   useEffect(() => {
     if (activeProject) {
@@ -336,6 +358,8 @@ export default function ExpensesForm() {
               value={form.date}
               onChange={e => setForm({ ...form, date: e.target.value })}
               className="col-span-3 w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              min={dateRange.min}
+              max={dateRange.max}
               required
             />
           </div>
@@ -359,37 +383,61 @@ export default function ExpensesForm() {
           </div>
           <div className="col-span-12">
             <label className="block text-sm font-medium text-slate-600 mb-1">SuperCategoría (Filtro)</label>
-            <SnapCarousel 
-              items={[
+            <div className="flex flex-wrap gap-2 py-2">
+              {[
                 { id: 'none', name: 'Sin Grupo', color: '#cbd5e1' }, 
                 ...groups
-              ]}
-              activeId={filterGroupId}
-              onChange={(id) => {
-                setFilterGroupId(id);
-                setForm(prev => ({ ...prev, category_id: '' }));
-              }}
-              themeColor="blue"
-            />
+              ].map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setFilterGroupId(item.id);
+                    setForm(prev => ({ ...prev, category_id: '' }));
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
+                    filterGroupId === item.id 
+                      ? 'bg-blue-600 border-blue-600 text-white' 
+                      : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  <div 
+                    className="w-2 h-2 rounded-full shrink-0" 
+                    style={{ backgroundColor: filterGroupId === item.id ? 'white' : (item.color || '#cbd5e1') }}
+                  ></div>
+                  {item.name}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="col-span-12">
             <label className="block text-sm font-medium text-slate-600 mb-1">Categoría</label>
-            <SnapCarousel 
-              items={categories
+            <div className="flex flex-wrap gap-2 py-2">
+              {categories
                 .filter(c => {
                   if (filterGroupId === 'none') return c.group_id === null || c.group_id === undefined;
                   return c.group_id === filterGroupId;
                 })
-                .map(c => ({
-                  id: c.id,
-                  name: c.group_name ? `${c.group_name} - ${c.name}` : c.name,
-                  color: c.color
-                }))
+                .map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setForm({ ...form, category_id: c.id })}
+                    className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition-all flex items-center gap-2 shadow-sm ${
+                      form.category_id === c.id 
+                        ? 'bg-blue-600 border-blue-600 text-white' 
+                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div 
+                      className="w-2 h-2 rounded-full shrink-0" 
+                      style={{ backgroundColor: form.category_id === c.id ? 'white' : (c.color || '#cbd5e1') }}
+                    ></div>
+                    {c.name}
+                  </button>
+                ))
               }
-              activeId={form.category_id}
-              onChange={(id) => setForm({ ...form, category_id: id })}
-              themeColor="blue"
-            />
+            </div>
           </div>
           <div className="col-span-12">
             <label className="block text-sm font-medium text-slate-600 mb-1">Concepto <span className="text-slate-400 font-normal">(Opcional)</span></label>

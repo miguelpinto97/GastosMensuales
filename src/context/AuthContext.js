@@ -15,6 +15,8 @@ export function AuthProvider({ children }) {
   const [activeProject, setActiveProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const [filterMonth, setFilterMonth] = useState(currentMonth);
 
   useEffect(() => {
     if (token) {
@@ -235,7 +237,9 @@ export function AuthProvider({ children }) {
       leaveProject,
       loginWithGoogle,
       completeRegistration,
-      logout
+      logout,
+      filterMonth,
+      setFilterMonth
     }}>
       {children}
     </AuthContext.Provider>
