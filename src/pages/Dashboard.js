@@ -109,6 +109,8 @@ export default function Dashboard() {
       items: group.items.sort((a, b) => a.name.localeCompare(b.name))
     }));
 
+    const forceBlackText = true; // Cambiar a false para volver a usar el color de la categoría en el texto
+
     return (
       <div className="mb-12 last:mb-0">
         {/* HEADER (clickable) */}
@@ -173,12 +175,12 @@ export default function Dashboard() {
                         style={{ 
                           backgroundColor: `${cat.color}15`,
                           borderColor: `${cat.color}40`,
-                          color: cat.color
+                          color: forceBlackText ? '#1e293b' : cat.color
                         }}
                       >
                         <div className="flex justify-between items-start mb-2">
-                          <p className="font-bold text-xs truncate max-w-[140px]">{cat.name}</p>
-                          <p className="font-black text-xs shrink-0">S/ {cat.total?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                          <p className={`font-bold text-xs truncate max-w-[140px] ${forceBlackText ? 'text-slate-800' : ''}`}>{cat.name}</p>
+                          <p className={`font-black text-xs shrink-0 ${forceBlackText ? 'text-slate-800' : ''}`}>S/ {cat.total?.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
                         </div>
 
                         {cat.budget > 0 && (
